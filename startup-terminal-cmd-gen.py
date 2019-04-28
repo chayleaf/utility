@@ -1,8 +1,6 @@
 #!/usr/bin/python3
 import sys, shlex
 
-#gnome-terminal -- bash -c "gnome-terminal --tab -- bash -c \"cd ~/code/py/old/pythonn && echo theproject.py ^Ctheproject.py\" && cd ~/code/py/old/pythonn && ./instaFox.py"
-
 cmdList = []
 cmd = None
 
