@@ -19,6 +19,6 @@ for cmd in cmdList[1:]:
 
 callCmdList.append(f'bash -c {shlex.quote(cmdList[0])}')
 
-outCmd = f'gnometerminal -- bash -c {shlex.quote(" && ".join(callCmdList))}'
+outCmd = f'gnome-terminal -- bash -c {shlex.quote(" && ".join(callCmdList))}'
 
 print(outCmd)
