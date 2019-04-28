@@ -11,6 +11,7 @@ while cmd != '':
 
 if len(cmdList) == 0:
     print('Empty command list, exiting...')
+    sys.exit()
 
 callCmdList = []
 for cmd in cmdList[1:]:
