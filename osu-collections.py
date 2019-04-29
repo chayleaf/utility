@@ -6,6 +6,9 @@ import json, tqdm, os, sys, argparse
 parser = argparse.ArgumentParser(description='Add osu! collections filtered by mods and accuracy')
 
 def parseMode(s):
+	if type(s) is int:
+		return s
+
 	if s.isnumeric():
 		return int(s)
 
@@ -21,15 +24,15 @@ def parseMode(s):
 		return 3
 	return 0
 
-parser.addArgument('--osubase', '-b', help='osu! directory')
-parser.addArgument('--mode', '-m', help='Gamemode (ID or name)', nargs='?', default=0, type=parseMode)
-parser.addArgument('--username', '-u', help='osu! username', nargs='?', default='')
-parser.addArgument('--online', '-o', help='Whether to fetch online scores, normally only local replays will be used', nargs='?', default=False, type=bool)
-parser.addArgument('--apikey', '-k', help='osu!api key (Used for fetching scores without a local replay or beatmap)', nargs='?', default='')
-parser.addArgument('--mapsfile', '-f', help='The file used for storing online beatmaps list', nargs='?', default='')
-parser.addArgument('--scoresfile', '-s', help="The file used for storing user's score list", nargs='?', default='')
+parser.add_argument('--osubase', '-b', help='osu! directory')
+parser.add_argument('--mode', '-m', help='Gamemode (ID or name)', nargs='?', default=0, type=parseMode)
+parser.add_argument('--username', '-u', help='osu! username', nargs='?', default='')
+parser.add_argument('--online', '-o', help='Whether to fetch online scores, normally only local replays will be used', nargs='?', default=False, type=bool)
+parser.add_argument('--apikey', '-k', help='osu!api key (Used for fetching scores without a local replay or beatmap)', nargs='?', default='')
+parser.add_argument('--mapsfile', '-f', help='The file used for storing online beatmaps list', nargs='?', default='')
+parser.add_argument('--scoresfile', '-s', help="The file used for storing user's score list", nargs='?', default='')
 
-if len(argv) == 1:
+if len(sys.argv) == 1:
 	try:
 		with open('secret.json') as f:
 			d = json.loads(f.read())
@@ -65,7 +68,7 @@ else:
 api = Api(apiKey)
 
 def cacheOnlineBeatmaps(fn):
-	bms = api.getBeatmaps(since=datetime(2007, 01, 01), mode=mode)
+	bms = api.getBeatmaps(since=datetime(2007, 1, 1), mode=mode)
 	with open(fn, 'w') as f:
 		f.write(json.dumps(bms))
 
@@ -108,8 +111,11 @@ def loadOnlineScores(fn):
 	with open(fn) as f:
 		scores = json.loads(f.read())
 	for bmID,modScores in scores.items():
+		if len(modScores) == 0:
+			continue
+
 		if not int(bmID) in hashesByBm.keys():
-			print('Warning: unknown hash for', bmID)
+			print(f'Warning: unknown hash for https://osu.ppy.sh/b/{bmID}')
 			continue
 
 		h = hashesByBm[int(bmID)]
