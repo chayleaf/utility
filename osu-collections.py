@@ -34,7 +34,7 @@ parser.add_argument('--scoresfile', '-s', help="The file used for storing user's
 
 if len(sys.argv) == 1:
 	try:
-		with open('secret.json') as f:
+		with open('data/secret.json') as f:
 			d = json.loads(f.read())
 			apiKey = d['apikey']
 			osuBase = d['osubase']
@@ -190,7 +190,7 @@ def betterScoreExists(m, h, acc):
 		acc1 = accGroup(acc)
 		accDiff1 = (0 if m & MOD_EZ else (2 if m & MOD_HR else 1))
 		spdDiff1 = (0 if m & MOD_HT else (2 if m & MOD_DT else 1))
-		visDiff1 = (3 if (m & MOD_HD) and (m & MOD_FL) else (2 if m & MOD_FL else (1 if m & MOD_HD else 0)))
+		visDiff1 = (2 if (m & MOD_HD) and (m & MOD_FL) else (1 if m & MOD_FL else (1 if m & MOD_HD else 0)))
 		if acc1 < acc0 or accDiff1 < accDiff0 or spdDiff1 < spdDiff0 or visDiff1 < visDiff0:
 			return False
 		if acc1 == acc0 and accDiff1 == accDiff0 and spdDiff1 == spdDiff0 and visDiff1 == visDiff0:

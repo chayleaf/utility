@@ -5,3 +5,4 @@ from .collections import CollectionDb, Collection
 from .enums import *
 from .replay import Replay
 from .utility import accuracy, totalHits
+from .scores import ScoresDb, Score

@@ -71,6 +71,8 @@ class BinaryFile:
 	def readBytes(self, n=None, len32=False):
 		if n is None:
 			n = (self.readInt() if len32 else self.read7bitInt())
+		if n <= 0:
+			return b''
 		return self.unpackData(f'<{n}s', n)
 
 	def writeBytes(self, b, len32=False):

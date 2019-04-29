@@ -26,7 +26,7 @@ class Collection:
 
 class CollectionDb(BinaryFile):
 	def __init__(self, filename=None):
-		self.timestamp = 0
+		self.version = 0
 		self.collections = []
 
 		if filename is None:
@@ -36,7 +36,7 @@ class CollectionDb(BinaryFile):
 
 	def load(self, filename):
 		super().__init__(filename, 'r')
-		self.timestamp = self.readInt()
+		self.version = self.readInt()
 		cnt = self.readInt()
 		self.collections = []
 		for i in range(cnt):
@@ -44,7 +44,7 @@ class CollectionDb(BinaryFile):
 
 	def save(self, filename=None):
 		super().__init__(self.filename if filename is None else filename, 'w')
-		self.writeInt(self.timestamp)
+		self.writeInt(self.version)
 		self.writeInt(len(self.collections))
 		for c in self.collections:
 			c.writeToDatabase(self)

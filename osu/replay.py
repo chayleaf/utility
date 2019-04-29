@@ -32,22 +32,31 @@ class Replay(BinaryFile):
 
 	def load(self, filename, ignoreReplayData=False):
 		super().__init__(filename, 'r')
-		self.mode = self.readByte()
-		self.version = self.readInt()
-		self.mapHash = self.readOsuString()
-		self.username = self.readOsuString()
-		self.replayHash = self.readOsuString()
-		self.cnt300 = self.readShort()
-		self.cnt100 = self.readShort()
-		self.cnt50 = self.readShort()
-		self.cntGeki = self.readShort()
-		self.cntKatu = self.readShort()
-		self.cntMiss = self.readShort()
-		self.score = self.readInt()
-		self.combo = self.readShort()
-		self.perfectCombo = self.readByte()
-		self.mods = self.readInt()
-		hpBarStr = self.readOsuString()
+		self.loadFrom(self, ignoreReplayData)
+
+	@classmethod
+	def fromDatabase(cls, scoredb):
+		ret = cls()
+		ret.loadFrom(scoredb)
+		return ret
+
+	def loadFrom(self, db, ignoreReplayData=False):
+		self.mode = db.readByte()
+		self.version = db.readInt()
+		self.mapHash = db.readOsuString()
+		self.username = db.readOsuString()
+		self.replayHash = db.readOsuString()
+		self.cnt300 = db.readShort()
+		self.cnt100 = db.readShort()
+		self.cnt50 = db.readShort()
+		self.cntGeki = db.readShort()
+		self.cntKatu = db.readShort()
+		self.cntMiss = db.readShort()
+		self.score = db.readInt()
+		self.combo = db.readShort()
+		self.perfectCombo = db.readByte()
+		self.mods = db.readInt()
+		hpBarStr = db.readOsuString()
 		self.hpGraph = []
 		for uv in hpBarStr.split(','):
 			if len(uv) == 0:
@@ -56,11 +65,11 @@ class Replay(BinaryFile):
 			t = int(t)
 			val = float(val)
 			self.hpGraph.append((t, val))
-		self.timestamp = self.readLL()
-		rawReplayData = self.readBytes(len32=True)
-		self.scoreID = self.readLL()
+		self.timestamp = db.readLL()
+		rawReplayData = db.readBytes(len32=True)
+		self.scoreID = db.readLL()
 
-		if not ignoreReplayData:
+		if not ignoreReplayData and rawReplayData != b'':
 			replayData = [s for s in lzma.decompress(data=rawReplayData).decode('utf-8').split(',') if len(s) > 0]
 			self.replayData = []
 			for wxyz in replayData[:-1] if self.version >= 20130319 else replayData:
@@ -72,3 +81,45 @@ class Replay(BinaryFile):
 				self.replayData.append((t, x, y, keyFlags))
 			if self.version >= 20130319:
 				self.randomSeed = int(replayData[-1].split('|')[0])
+
+	def writeToDatabase(self, scoredb, stripData=True):
+		scoredb.writeByte(self.mode)
+		scoredb.writeInt(self.version)
+		scoredb.writeOsuString(self.mapHash)
+		scoredb.writeOsuString(self.username)
+		scoredb.writeOsuString(self.replayHash)
+		scoredb.writeShort(self.cnt300)
+		scoredb.writeShort(self.cnt100)
+		scoredb.writeShort(self.cnt50)
+		scoredb.writeShort(self.cntGeki)
+		scoredb.writeShort(self.cntKatu)
+		scoredb.writeShort(self.cntMiss)
+		scoredb.writeInt(self.score)
+		scoredb.writeShort(self.combo)
+		scoredb.writeByte(self.perfectCombo)
+		scoredb.writeInt(self.mods)
+		if stripData:
+			scoredb.writeOsuString('')
+		else:
+			raise NotImplementedError()
+		scoredb.writeLL(self.timestamp)
+		if stripData:
+			scoredb.writeInt(-1)
+		else:
+			raise NotImplementedError()
+		scoredb.writeLL(self.scoreID)
+
+	def __repr__(self):
+		return f'Replay(score={repr(self.score)}, mapHash={repr(self.mapHash)})'
+
+	def __hash__(self):
+		return int(self.replayHash, 16)
+
+	def __cmp__(self, b):
+		return cmp(self.score, b.score)
+
+	def __lt__(self, b):
+		return self.score < b.score
+
+	def __gt__(self, b):
+		return self.score > b.score
