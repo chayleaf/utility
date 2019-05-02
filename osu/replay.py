@@ -65,7 +65,7 @@ class Replay(BinaryFile):
 			t = int(t)
 			val = float(val)
 			self.hpGraph.append((t, val))
-		self.timestamp = db.readLL()
+		self.timestamp = db.readOsuDate()
 		rawReplayData = db.readBytes(len32=True)
 		self.scoreID = db.readLL()
 
@@ -80,7 +80,7 @@ class Replay(BinaryFile):
 				keyFlags = int(keyFlags)
 				self.replayData.append((t, x, y, keyFlags))
 			if self.version >= 20130319:
-				self.randomSeed = int(replayData[-1].split('|')[0])
+				self.randomSeed = int(replayData[-1].split('|')[-1])
 
 	def writeToDatabase(self, scoredb, stripData=True):
 		scoredb.writeByte(self.mode)
@@ -98,28 +98,16 @@ class Replay(BinaryFile):
 		scoredb.writeShort(self.combo)
 		scoredb.writeByte(self.perfectCombo)
 		scoredb.writeInt(self.mods)
-		if stripData:
-			scoredb.writeOsuString('')
-		else:
-			raise NotImplementedError()
-		scoredb.writeLL(self.timestamp)
-		if stripData:
+		scoredb.writeOsuString('' if stripData or len(self.hpGraph) == 0 else ','.join(f'{u}|{v}' for u,v in self.hpGraph) + ',')
+		scoredb.writeOsuDate(self.timestamp)
+		if stripData or len(self.replayData) == 0:
 			scoredb.writeInt(-1)
 		else:
-			raise NotImplementedError()
+			scoredb.writeOsuString(','.join(f'{w}|{x}|{y}|{z}' for w,x,y,z in self.replayData) + (f'-12345|0|0|{self.randomSeed},' if self.version >= 20130319 else ','))
 		scoredb.writeLL(self.scoreID)
+
+	def generateFilename(self):
+		return f'{self.replayHash}-{self.timestamp-504911232000000000}.osr' #ticks since 1600 (1600 * 365.2425 * 24 * 60 * 60 * 10000000 = 504911232000000000)
 
 	def __repr__(self):
 		return f'Replay(score={repr(self.score)}, mapHash={repr(self.mapHash)})'
-
-	def __hash__(self):
-		return int(self.replayHash, 16)
-
-	def __cmp__(self, b):
-		return cmp(self.score, b.score)
-
-	def __lt__(self, b):
-		return self.score < b.score
-
-	def __gt__(self, b):
-		return self.score > b.score

@@ -1,8 +1,9 @@
 from urllib.request import urlopen
 from urllib.parse import urlencode
 from datetime import datetime
-import json
+import json, time
 from .enums import *
+from .replay import Replay
 
 def convertTime(t):
 	return t.isoformat(' ') #t.strftime('%Y-%m-%d %H:%M:%S')
@@ -64,6 +65,32 @@ class Api:
 		params['b'] = str(beatmap)
 
 		return json.loads(urlopen(url+'?'+urlencode(params)).read().decode('utf-8'))
+
+	def getReplay(self, **kwargs):
+		url = self.BASE + '/get_replay'
+		beatmap = kwargs.get('beatmap')
+		mode = kwargs.get('mode', MODE_STD)
+		apiScore = kwargs.get('apiScore', None)
+
+		params = {'k':self.key,'b':str(beatmap),'m':str(mode)}
+
+		if apiScore is not None:
+			if apiScore['replay_available'] != '1':
+				return None
+			params['u'] = apiScore['username']
+			params['type'] = 'string'
+			params['mods'] = apiScore['enabled_mods']
+		else:
+			setUserFromKwargs(kwargs, params)
+			params['mods'] = kwargs.get('mods', 0)
+
+		ret = json.loads(urlopen(url+'?'+urlencode(params)).read().decode('utf-8'))
+		if 'encoding' in ret.keys():
+			if ret['encoding'] == 'base64':
+				time.sleep(6) #artifical delay to prevent >10 requests per minute (the limit), there are more optimal solutions but I DONT CARE
+				return ret['content']
+			raise NotImplementedError('Unknown replay encoding')
+		return ret
 
 	def getBeatmaps(self, **kwargs):
 		since=kwargs.get('since', None)
