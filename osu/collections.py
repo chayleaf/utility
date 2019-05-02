@@ -15,14 +15,17 @@ class Collection:
 			self.hashes.append(colldb.readOsuString())
 		return self
 
-	def __repr__(self):
-		return f'Collection(name={repr(self.name)}, {len(self.hashes)} hashes)'
-
 	def writeToDatabase(self, colldb):
 		colldb.writeOsuString(self.name)
 		colldb.writeInt(len(self.hashes))
 		for s in self.hashes:
 			colldb.writeOsuString(s)
+	
+	def __repr__(self):
+		return f'Collection(name={repr(self.name)}, {len(self.hashes)} hashes)'
+
+	def __len__(self):
+		return len(self.hashes)
 
 class CollectionDb(BinaryFile):
 	def __init__(self, filename=None):
