@@ -145,7 +145,7 @@ def loadReplays(base=None): #also backup
 		if customDir:
 			genFn = r.generateFilename()
 			if os.path.basename(f) != genFn:
-				newPath = os.path.join(osuBase, genFn)
+				newPath = os.path.join(base, genFn)
 				os.rename(f, newPath)
 				r.filename = newPath
 		elif replaysDir != '': #processing osu replays dir; backup the replay if backup path specified
