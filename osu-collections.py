@@ -100,7 +100,7 @@ def loadOnlineHashes(fn):
 		bms = json.loads(f.read())
 	for bm in bms:
 		hashesByBm[int(bm['beatmap_id'])] = bm['file_md5']
-		id bm['max_combo'] is not None:
+		if bm['max_combo'] is not None:
 			combosByHash[bm['file_md5']] = int(bm['max_combo'])
 
 def loadLocalHashes():
@@ -136,7 +136,7 @@ def loadReplays(base=None): #also backup
 	if base is None:
 		customDir = False
 		base = os.path.join(osuBase, 'Data', 'r')
-	dirList = [os.path.join(base, f) for f in os.listdir(base) if f.endswith('.osr')]
+	replays = [os.path.join(base, f) for f in os.listdir(base) if f.endswith('.osr')]
 
 	scores = {}
 	for f in replays:
@@ -160,7 +160,7 @@ def loadReplays(base=None): #also backup
 			combosByHash[r.mapHash] = r.combo #ideally this should be done for each replay before the other stuff, but who cares amirite
 
 		# If replay user is different; if map is not loaded; if replay isn't complete.
-		if r.username != usernameor r.mapHash not in combosByHash.keys() or totalHits(r.mode, r.cntMiss, r.cnt50, r.cnt100, r.cnt300, r.cntGeki, r.cntKatu) < combosByHash[r.mapHash]:
+		if r.username != username or r.mapHash not in combosByHash.keys() or totalHits(r.mode, r.cntMiss, r.cnt50, r.cnt100, r.cnt300, r.cntGeki, r.cntKatu) < combosByHash[r.mapHash]:
 			continue
 
 		k = f'{r.mapHash}|{r.mods}'
