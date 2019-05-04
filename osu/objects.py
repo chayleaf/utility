@@ -117,13 +117,13 @@ class HitObject:
 			raise ValueError('Object info too short')
 
 		flags = int(objectInfo[3])
-		if flags & self.FLAGS_CIRCLE:
+		if flags & HitObject.FLAGS_CIRCLE:
 			ret = Circle()
-		elif flags & self.FLAGS_SLIDER:
+		elif flags & HitObject.FLAGS_SLIDER:
 			ret = Slider()
-		elif flags & self.FLAGS_SPINNER:
+		elif flags & HitObject.FLAGS_SPINNER:
 			ret = Spinner()
-		elif flags & self.FLAGS_MANIA_HOLD_NOTE:
+		elif flags & HitObject.FLAGS_MANIA_HOLD_NOTE:
 			ret = ManiaHoldNote()
 
 		ret._loadFromBeatmapFile(objectInfo)
@@ -148,7 +148,7 @@ class HitObject:
 
 class Circle(HitObject):
 	def __init__(self, **kwargs):
-		super().__init__(kwargs)
+		super().__init__(**kwargs)
 
 	def _loadFromBeatmapFile(self, objectInfo):
 		if len(objectInfo) <= 5:
@@ -170,7 +170,7 @@ class Slider(HitObject):
 	TYPE_TO_STR = {LINEAR:'L',PERFECT:'P',BEZIER:'B',CATMULL:'C'}
 	
 	def __init__(self, **kwargs):
-		super().__init__(kwargs)
+		super().__init__(**kwargs)
 		#edgeAdditions
 		self.sliderType = kwargs.get('sliderType', self.LINEAR)
 		self.curvePoints = kwargs.get('sliderCurvePoints', [])
@@ -224,7 +224,7 @@ class Slider(HitObject):
 
 class Spinner(HitObject):
 	def __init__(self, **kwargs):
-		super().__init__(kwargs)
+		super().__init__(**kwargs)
 		self.endTime = kwargs.get('endTime', 0)
 
 	def _loadFromBeatmapFile(self, objectInfo):
@@ -240,7 +240,7 @@ class Spinner(HitObject):
 
 class ManiaHoldNote(HitObject):
 	def __init__(self, **kwargs):
-		super().__init__(kwargs)
+		super().__init__(**kwargs)
 		self.endTime = kwargs.get('endTime', 0)
 
 	def _loadFromBeatmapFile(self, objectInfo):

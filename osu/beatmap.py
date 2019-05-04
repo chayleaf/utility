@@ -1,6 +1,7 @@
 from .objects import *
 from .enums import *
-from .beatmapmetadata import BeatmapMetadata
+from .beatmapmeta import BeatmapMetadata
+from .events import Event
 
 class TimingPoint:
 	def __init__(self, **kwargs):
@@ -11,8 +12,9 @@ class TimingPoint:
 		self.inherited = kwargs.get('inherited', False)
 		self.kiai = kwargs.get('kiai', False)
 
-	@staticmethod
-	def fromFileData(self, d):
+	@classmethod
+	def fromFileData(cls, d):
+		self = cls()
 		self.time = int(d[0])
 		self.msPerBeat = float(d[1]) # or -(percentage of previous msPerBeat) if inherited
 		self.beatsPerBar = int(d[2])
@@ -21,6 +23,7 @@ class TimingPoint:
 		self.hitSound.volume = int(d[5])
 		self.inherited = int(d[6]) != 0
 		self.kiai = int(d[7]) != 0
+		return self
 
 	def getSaveString(self):
 		return f'{self.time},{self.msPerBeat},{self.beatsPerBar},{self.hitSound.sampleSet},{self.hitSound.customIndex},{self.hitSound.volume},{int(self.inherited)},{int(self.kiai)}'
@@ -47,9 +50,9 @@ class Beatmap(BeatmapMetadata):
 
 	def readLine(self):
 		if not self.returnLast:
-			s = self.inFile.readLine()
+			s = self.inFile.readline()
 			while s.startswith('//'):
-				s = self.inFile.readLine()
+				s = self.inFile.readline()
 			if len(s) == 0:
 				self.eof = True
 			self.eofLast = self.eof
@@ -76,7 +79,7 @@ class Beatmap(BeatmapMetadata):
 			eventStr = self.readLine()
 			if len(eventStr) == 0:
 				break
-			self.events.append(Event.fromFile())
+			self.events.append(Event.fromFile(self))
 		self.inFile.seek(oldPos)
 		self.eof = oldEof
 
@@ -86,7 +89,7 @@ class Beatmap(BeatmapMetadata):
 		self.inFile = open(filename, 'r', encoding='utf-8')
 		self.filename = filename
 
-		firstLine = readLine()
+		firstLine = self.readLine()
 		if 'osu file format' in firstLine and 'v' in firstLine:
 			self.version = int(firstLine.split('v')[-1])
 		else:
@@ -97,7 +100,7 @@ class Beatmap(BeatmapMetadata):
 			if len(s) == 0 or s[0] != '[':
 				continue
 			
-			sectionName = s.trim('[').trim(']')
+			sectionName = s.strip('[').strip(']')
 			if sectionName in ['General', 'Editor', 'Metadata', 'Difficulty']:
 				while not self.eof:
 					s = self.readLine()

@@ -6,13 +6,13 @@ class Event:
 	LAYER_PASS = 2
 	LAYER_FOREGROUND = 3
 
-	def __init__(**kwargs):
+	def __init__(self, **kwargs):
 		self.transformEvents = kwargs.get('transformEvents', [])
 
 	@staticmethod
 	def _parseLayer(l):
 		if l.isnumeric():
-			return int(l):
+			return int(l)
 		elif l == 'Background':
 			return 0
 		elif l == 'Fail':
@@ -62,7 +62,7 @@ class Event:
 		ret._loadChildEventsFromFile(f)
 		return ret
 
-	def _loadChildEventsFromFile(f):
+	def _loadChildEventsFromFile(self, f):
 		target = None
 		eventTypeDict = {
 			'F':FadeTransform,
@@ -111,8 +111,8 @@ class Event:
 		return '\n'.join(ret)
 
 class BackgroundEvent(Event):
-	def __init__(**kwargs):
-		super().__init__(kwargs)
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
 		self.filename = kwargs.get('filename', '')
 		self.time = kwargs.get('time', 0)
 		self.x = kwargs.get('x', 0)
@@ -132,15 +132,15 @@ class BackgroundEvent(Event):
 		return f'Background,{self.time},{self.filename},{self.x},{self.y}'
 
 class VideoEvent(BackgroundEvent):
-	def __init__(**kwargs):
-		super().__init__(kwargs)
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
 
 	def _getBaseSaveString(self):
 		return f'Video,{self.time},{self.filename},{self.x},{self.y}'
 
 class BreakEvent(Event):
-	def __init__(**kwargs):
-		super().__init__(kwargs)
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
 		self.time = kwargs.get('time', 0)
 		self.endTime = kwargs.get('endTime', 0)
 
@@ -155,8 +155,8 @@ class BreakEvent(Event):
 		return f'Break,{self.time},{self.endTime}'
 		
 class BackgroundColorEvent(Event):
-	def __init__(**kwargs):
-		super().__init__(kwargs)
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
 		self.time = kwargs.get('time', 0)
 		self.r = kwargs.get('r', 0)
 		self.g = kwargs.get('g', 0)
@@ -183,8 +183,8 @@ class SpriteEvent(Event):
 	ORIGIN_BOTTOMCENTRE = 7
 	ORIGIN_BOTTOMRIGHT = 8
 
-	def __init__(**kwargs):
-		super().__init__(kwargs)
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
 		self.filename = kwargs.get('filename', '')
 		self.x = kwargs.get('x', 0.0)
 		self.y = kwargs.get('y', 0.0)
@@ -260,8 +260,8 @@ class SpriteEvent(Event):
 		return 'Sprite,'+self._getSpriteBaseSaveString()
 
 class SampleEvent(Event):
-	def __init__(**kwargs):
-		super().__init__(kwargs)
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
 		self.filename = kwargs.get('filename', '')
 		self.time = kwargs.get('time', 0)
 		self.volume = kwargs.get('volume', 0)
@@ -283,8 +283,8 @@ class AnimationEvent(SpriteEvent):
 	LOOP_FOREVER = 0
 	LOOP_ONCE = 1
 	
-	def __init__(**kwargs):
-		super().__init__(kwargs)
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
 		self.frameCount = kwargs.get('frameCount', 0)
 		self.frameDelay = kwargs.get('frameDelay', 0.0)
 		self.loopType = self.LOOP_FOREVER
@@ -317,12 +317,12 @@ class AnimationEvent(SpriteEvent):
 	def _getBaseSaveString(self):
 		return f'Animation,{self._getSpriteBaseSaveString()},{self.frameCount},{self.frameDelay},{self._serializeLoopType(self.loopType)}'
 
-class SpriteTransformEvent
+class SpriteTransformEvent:
 	EASING_NONE = 0
 	EASING_SLOWDOWN = 1
 	EASING_SPEEDUP = 2
 	
-	def __init__(**kwargs):
+	def __init__(self, **kwargs):
 		self.easing = kwargs.get('easing', self.EASING_NONE)
 		self.time = kwargs.get('time', 0)
 		self.endTime = kwargs.get('endTime', 0)
@@ -346,8 +346,8 @@ class SpriteTransformEvent
 		return None
 
 class FadeTransform(SpriteTransformEvent):
-	def __init__(**kwargs):
-		super().__init__(kwargs)
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
 		self.opacity = kwargs.get('opacity', 0.0)
 		self.endOpacity = kwargs.get('endOpacity', 0.0)
 	
@@ -366,8 +366,8 @@ class FadeTransform(SpriteTransformEvent):
 		return f'F,{self._getBaseSaveString()},{self.opacity},{self.endOpacity}'
 
 class MoveTransform(SpriteTransformEvent):
-	def __init__(**kwargs):
-		super().__init__(kwargs)
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
 		self.x = kwargs.get('x', None)
 		self.y = kwargs.get('y', None)
 		self.endX = kwargs.get('endX', None)
@@ -419,8 +419,8 @@ class MoveTransform(SpriteTransformEvent):
 		return f'M,{self._getBaseSaveString()},{self.x},{self.y},{self.endX},{self.endY}'
 
 class ScaleTransform(SpriteTransformEvent):
-	def __init__(**kwargs):
-		super().__init__(kwargs)
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
 		self.scale = kwargs.get('scale', 0.0)
 		self.endScale = kwargs.get('endScale', 0.0)
 	
@@ -439,8 +439,8 @@ class ScaleTransform(SpriteTransformEvent):
 		return f'S,{self._getBaseSaveString()},{self.scale},{self.endScale}'
 
 class VectorScaleTransform(SpriteTransformEvent):
-	def __init__(**kwargs):
-		super().__init__(kwargs)
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
 		self.scaleX = kwargs.get('scaleX', 0.0)
 		self.scaleY = kwargs.get('scaleY', 0.0)
 		self.endScaleX = kwargs.get('endScaleX', 0.0)
@@ -466,8 +466,8 @@ class VectorScaleTransform(SpriteTransformEvent):
 		return f'V,{self._getBaseSaveString()},{self.scaleX},{self.scaleY},{self.endScaleX},{self.endScaleY}'
 
 class RotateTransform(SpriteTransformEvent):
-	def __init__(**kwargs):
-		super().__init__(kwargs)
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
 		self.angle = kwargs.get('angle', 0.0)
 		self.endAngle = kwargs.get('endAngle', 0.0)
 	
@@ -485,8 +485,8 @@ class RotateTransform(SpriteTransformEvent):
 		return f'R,{self._getBaseSaveString()},{self.angle},{self.endAngle}'
 
 class ColorTransform(SpriteTransformEvent):
-	def __init__(**kwargs):
-		super().__init__(kwargs)
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
 		self.color = (kwargs.get('r', 0), kwargs.get('g', 0), kwargs.get('b', 0))
 		self.color = kwargs.get('color', self.color)
 		self.endColor = (kwargs.get('endR', 0), kwargs.get('endG', 0), kwargs.get('endB', 0))
@@ -507,7 +507,7 @@ class ColorTransform(SpriteTransformEvent):
 		return f'C,{self._getBaseSaveString()},{",".join(self.color)},{"".join(self.endColor)}'
 
 class Loop(Event):
-	def __init__(**kwargs):
+	def __init__(self, **kwargs):
 		self.time = kwargs.get('time', 0)
 		self.loopCount = kwargs.get('loopCount', 0)
 		self.transformEvents = kwargs.get('transformEvents', [])
@@ -561,7 +561,7 @@ class HitSoundTrigger(Trigger):
 			if s.startswith(k):
 				self.hitSound.sampleSet = v
 				s = s[len(k):]
-				for k,v in sampleSets.items()
+				for k,v in sampleSets.items():
 					if s.startswith(k):
 						self.hitSound.additionSet = v
 						s = s[len(k):]
@@ -613,7 +613,7 @@ Trigger.FAILING = Trigger('Failing')
 Trigger.HITOBJECTHIT = Trigger('HitObjectHit')
 
 class TriggeredLoop(Event):
-	def __init__(**kwargs):
+	def __init__(self, **kwargs):
 		self.trigger = None
 		self.time = kwargs.get('time', None)
 		self.endTime = kwargs.get('endTime', None)
@@ -644,8 +644,8 @@ class ParametersTransform(SpriteTransformEvent):
 	VFLIP = 1
 	ADDITIVEBLEND = 2
 	
-	def __init__(**kwargs):
-		super().__init__(kwargs)
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
 		self.effect = kwargs.get('effect', self.HFLIP)
 	
 	def _loadInfoFromFile(self, eventInfo, i):
