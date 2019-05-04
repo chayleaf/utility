@@ -9,9 +9,9 @@ class BeatmapMetadata:
 		self.titleU = ''
 		self.creator = ''
 		self.diffName = ''
-		self.mp3 = ''
+		self.audioFile = ''
 		self.hash = ''
-		self.filename = ''
+		self.beatmapFile = ''
 
 		self.state = 0
 		self.circles = 0
@@ -30,9 +30,9 @@ class BeatmapMetadata:
 
 		self.timingPoints = []
 
-		self.mapId = 0
-		self.mapsetId = 0
-		self.threadId = 0
+		self.mapID = 0
+		self.mapsetID = 0
+		self.threadID = 0
 		self.playerRank = [Rank.N for i in range(4)]
 		self.offset = 0
 		self.stackLeniency = 0.0
@@ -64,9 +64,9 @@ class BeatmapMetadata:
 		self.titleU = osudb.readOsuString()
 		self.creator = osudb.readOsuString()
 		self.diffName = osudb.readOsuString()
-		self.mp3 = osudb.readOsuString()
+		self.audioFile = osudb.readOsuString()
 		self.hash = osudb.readOsuString()
-		self.filename = osudb.readOsuString()
+		self.beatmapFile = osudb.readOsuString()
 
 		self.state = osudb.readByte()
 		self.circles = osudb.readShort()
@@ -99,9 +99,9 @@ class BeatmapMetadata:
 			inherit = osudb.readByte()
 			self.timingPoints.append([msPerBeat, time, inherit])
 
-		self.mapId = osudb.readInt()
-		self.mapsetId = osudb.readInt()
-		self.threadId = osudb.readInt()
+		self.mapID = osudb.readInt()
+		self.mapsetID = osudb.readInt()
+		self.threadID = osudb.readInt()
 		for i in [Mode.OSU, Mode.CTB, Mode.TAIKO, Mode.MANIA]:
 			self.playerRank[i] = osudb.readByte()
 		self.offset = osudb.readShort()
@@ -135,9 +135,9 @@ class BeatmapMetadata:
 		osudb.writeOsuString(self.titleU)
 		osudb.writeOsuString(self.creator)
 		osudb.writeOsuString(self.diffName)
-		osudb.writeOsuString(self.mp3)
+		osudb.writeOsuString(self.audioFile)
 		osudb.writeOsuString(self.hash)
-		osudb.writeOsuString(self.filename)
+		osudb.writeOsuString(self.beatmapFile)
 
 		osudb.writeByte(self.state)
 		osudb.writeShort(self.circles)
@@ -166,9 +166,9 @@ class BeatmapMetadata:
 			osudb.writeDouble(time)
 			osudb.writeByte(inherit)
 
-		osudb.writeInt(self.mapId)
-		osudb.writeInt(self.mapsetId)
-		osudb.writeInt(self.threadId)
+		osudb.writeInt(self.mapID)
+		osudb.writeInt(self.mapsetID)
+		osudb.writeInt(self.threadID)
 		for i in [Mode.OSU, Mode.CTB, Mode.TAIKO, Mode.MANIA]:
 			osudb.writeByte(self.playerRank[i])
 		osudb.writeShort(self.offset)
@@ -200,7 +200,7 @@ class BeatmapMetadata:
 
 	@property
 	def path(self):
-		return os.path.join(self.directory, self.filename)
+		return os.path.join(self.directory, self.beatmapFile)
 	@path.setter
 	def path(self, val):
 		dirFile = val.split('/')
@@ -209,7 +209,7 @@ class BeatmapMetadata:
 		if len(dirFile) != 2:
 			raise ValueError('Invalid path')
 		self.directory = dirFile[0]
-		self.filename = dirFile[1]
+		self.beatmapFile = dirFile[1]
 
 	@property
 	def osuRank(self):

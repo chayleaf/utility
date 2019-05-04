@@ -23,8 +23,19 @@ class Event:
 			return 3
 
 	@staticmethod
+	def _serializeLayer(l):
+		if l == 0:
+			return 'Background'
+		elif l == 1:
+			return 'Fail'
+		elif l == 2:
+			return 'Pass'
+		elif l == 3:
+			return 'Foreground'
+
+	@staticmethod
 	def fromFile(f):
-		eventInfo = f.readLine().strip().split(',')
+		eventInfo = f.parseVariables(f.readLine()).split(',')
 		f.lineBack()
 		if len(eventInfo) <= 0:
 			raise ValueError('Event info too short')
@@ -52,7 +63,7 @@ class Event:
 		return ret
 
 	def _loadChildEventsFromFile(f):
-		loop = None
+		target = None
 		eventTypeDict = {
 			'F':FadeTransform,
 			'M':MoveTransform,
@@ -67,14 +78,13 @@ class Event:
 			'T':TriggeredLoop
 		}
 		while True:
-			eventInfo = f.readLine().strip()
-			eventInfo = f.parseVariables(eventInfo)
+			eventInfo = f.parseVariables(f.readLine())
 			if len(eventInfo) < 2 or eventInfo[0] not in ' _':
 				f.lineBack()
 				break
 			
 			if eventInfo[1] not in ' _':
-				loop = None
+				target = self
 
 			eventInfo = eventInfo.trim(' ').trim('_').split(',')
 			oldI = -1
@@ -86,13 +96,19 @@ class Event:
 				event = eventType()
 				i = event._loadInfoFromFile(eventInfo, i)
 
-				if loop is not None:
-					loop.transformEvents.append(event)
-				else:
-					self.transformEvents.append(event)
+				target.transformEvents.append(event)
 
 				if eventInfo[0] in 'LT':
-					loop = event
+					target = event
+
+	def _getBaseSaveString(self):
+		return None
+
+	def getSaveString(self):
+		ret = [self._getBaseSaveString()]
+		for e in self.transformEvents:
+			ret.append(' '+e.getSaveString())
+		return '\n'.join(ret)
 
 class BackgroundEvent(Event):
 	def __init__(**kwargs):
@@ -103,7 +119,7 @@ class BackgroundEvent(Event):
 		self.y = kwargs.get('y', 0)
 
 	def _loadFromFile(self, f):
-		eventInfo = f.readLine().strip().split(',')
+		eventInfo = f.parseVariables(f.readLine()).split(',')
 		if len(eventInfo) <= 2:
 			raise ValueError('Event info too short')
 		self.filename = eventInfo[2].strip('"')
@@ -112,12 +128,15 @@ class BackgroundEvent(Event):
 			self.x = int(eventInfo[3])
 			self.x = int(eventInfo[4])
 
-class VideoEvent(Background):
+	def _getBaseSaveString(self):
+		return f'Background,{self.time},{self.filename},{self.x},{self.y}'
+
+class VideoEvent(BackgroundEvent):
 	def __init__(**kwargs):
 		super().__init__(kwargs)
 
-	def _loadFromFile(self, f):
-		super()._loadFromFile(f)
+	def _getBaseSaveString(self):
+		return f'Video,{self.time},{self.filename},{self.x},{self.y}'
 
 class BreakEvent(Event):
 	def __init__(**kwargs):
@@ -126,11 +145,14 @@ class BreakEvent(Event):
 		self.endTime = kwargs.get('endTime', 0)
 
 	def _loadFromFile(self, f):
-		eventInfo = f.readLine().strip().split(',')
+		eventInfo = f.parseVariables(f.readLine()).split(',')
 		if len(eventInfo) <= 2:
 			raise ValueError('Event info too short')
 		self.time = int(eventInfo[1])
 		self.endTime = int(eventInfo[2])
+
+	def _getBaseSaveString(self):
+		return f'Break,{self.time},{self.endTime}'
 		
 class BackgroundColorEvent(Event):
 	def __init__(**kwargs):
@@ -141,11 +163,14 @@ class BackgroundColorEvent(Event):
 		self.b = kwargs.get('b', 0)
 
 	def _loadFromFile(self, f):
-		eventInfo = f.readLine().strip().split(',')
+		eventInfo = f.parseVariables(f.readLine()).split(',')
 		if len(eventInfo) <= 4:
 			raise ValueError('Event info too short')
 		self.time = int(eventInfo[1])
 		self.r, self.g, self.b = map(int, eventInfo[2:5])
+
+	def _getBaseSaveString(self):
+		return f'Colour,{self.time},{self.r},{self.g},{self.b}'
 
 class SpriteEvent(Event):
 	ORIGIN_TOPLEFT = 0
@@ -192,8 +217,31 @@ class SpriteEvent(Event):
 
 		raise ValueError('Invalid origin')
 
+	@staticmethod
+	def _serializeOrigin(o):
+		if o == 0:
+			return 'TopLeft'
+		elif o == 1:
+			return 'TopCentre'
+		elif o == 2:
+			return 'TopRight'
+		elif o == 3:
+			return 'CentreLeft'
+		elif o == 4:
+			return 'Centre'
+		elif o == 5:
+			return 'CentreRight'
+		elif o == 6:
+			return 'BottomLeft'
+		elif o == 7:
+			return 'BottomCentre'
+		elif o == 8:
+			return 'BottomRight'
+
+		raise ValueError('Invalid origin')
+
 	def _loadFromFile(self, f):
-		eventInfo = f.readLine().strip().split(',')
+		eventInfo = f.parseVariables(f.readLine()).split(',')
 		if len(eventInfo) <= 5:
 			raise ValueError('Event info too short')
 		self._loadSpriteEventInfo(eventInfo)
@@ -205,6 +253,12 @@ class SpriteEvent(Event):
 		self.x = float(eventInfo[4])
 		self.y = float(eventInfo[5])
 
+	def _getSpriteBaseSaveString(self):
+		return f'{self._serializeLayer(self.layer)},{self._serializeOrigin(self.origin)},"{self.filename}",{self.x},{self.y}'
+
+	def _getBaseSaveString(self):
+		return 'Sprite,'+self._getSpriteBaseSaveString()
+
 class SampleEvent(Event):
 	def __init__(**kwargs):
 		super().__init__(kwargs)
@@ -214,13 +268,16 @@ class SampleEvent(Event):
 		self.layer = kwargs.get('layer', self.LAYER_BACKGROUND)
 
 	def _loadFromFile(self, f):
-		eventInfo = f.readLine().strip().split(',')
+		eventInfo = f.parseVariables(f.readLine()).split(',')
 		if len(eventInfo) <= 5:
 			raise ValueError('Event info too short')
 		self.time = int(eventInfo[1])
 		self.layer = self._parseLayer(eventInfo[2])
 		self.filename = eventInfo[3].strip('"')
 		self.volume = int(eventInfo[4])
+
+	def _getBaseSaveString(self):
+		return f'Sample,{self.time},{self._serializeLayer(self.layer)},"{self.filename}",{self.volume}'
 
 class AnimationEvent(SpriteEvent):
 	LOOP_FOREVER = 0
@@ -232,8 +289,16 @@ class AnimationEvent(SpriteEvent):
 		self.frameDelay = kwargs.get('frameDelay', 0.0)
 		self.loopType = self.LOOP_FOREVER
 
+	@staticmethod
+	def _serializeLoopType(t):
+		if t == AnimationEvent.LOOP_FOREVER:
+			return 'Forever'
+		elif t == AnimationEvent.LOOP_ONCE:
+			return 'Once'
+		raise ValueError('Invalid loop type')
+
 	def _loadFromFile(self, f):
-		eventInfo = f.readLine().strip().split(',')
+		eventInfo = f.parseVariables(f.readLine()).split(',')
 		if len(eventInfo) <= 7:
 			raise ValueError('Event info too short')
 		self._loadSpriteEventInfo(eventInfo)
@@ -249,11 +314,10 @@ class AnimationEvent(SpriteEvent):
 			else:
 				raise ValueError('Invalid loop type')
 
-class SpriteChildEvent:
-	def __init__(**kwargs):
-		pass
+	def _getBaseSaveString(self):
+		return f'Animation,{self._getSpriteBaseSaveString()},{self.frameCount},{self.frameDelay},{self._serializeLoopType(self.loopType)}'
 
-class SpriteTransformEvent(SpriteChildEvent):
+class SpriteTransformEvent
 	EASING_NONE = 0
 	EASING_SLOWDOWN = 1
 	EASING_SPEEDUP = 2
@@ -275,6 +339,12 @@ class SpriteTransformEvent(SpriteChildEvent):
 		i += 1
 		return i
 
+	def _getBaseSaveString(self):
+		return f'{self.easing},{self.time},{self.endTime}'
+
+	def getSaveString(self):
+		return None
+
 class FadeTransform(SpriteTransformEvent):
 	def __init__(**kwargs):
 		super().__init__(kwargs)
@@ -291,6 +361,9 @@ class FadeTransform(SpriteTransformEvent):
 		else:
 			self.endOpacity = self.opacity
 		return i
+
+	def getSaveString(self):
+		return f'F,{self._getBaseSaveString()},{self.opacity},{self.endOpacity}'
 
 class MoveTransform(SpriteTransformEvent):
 	def __init__(**kwargs):
@@ -338,6 +411,13 @@ class MoveTransform(SpriteTransformEvent):
 
 		return i
 
+	def getSaveString(self):
+		if self.x == None:
+			return f'MY,{self._getBaseSaveString()},{self.y},{self.endY}'
+		elif self.y == None:
+			return f'MX,{self._getBaseSaveString()},{self.x},{self.endX}'
+		return f'M,{self._getBaseSaveString()},{self.x},{self.y},{self.endX},{self.endY}'
+
 class ScaleTransform(SpriteTransformEvent):
 	def __init__(**kwargs):
 		super().__init__(kwargs)
@@ -354,6 +434,9 @@ class ScaleTransform(SpriteTransformEvent):
 		else:
 			self.endScale = self.scale
 		return i
+
+	def getSaveString(self):
+		return f'S,{self._getBaseSaveString()},{self.scale},{self.endScale}'
 
 class VectorScaleTransform(SpriteTransformEvent):
 	def __init__(**kwargs):
@@ -379,6 +462,9 @@ class VectorScaleTransform(SpriteTransformEvent):
 			self.endScaleY = self.scaleY
 		return i
 
+	def getSaveString(self):
+		return f'V,{self._getBaseSaveString()},{self.scaleX},{self.scaleY},{self.endScaleX},{self.endScaleY}'
+
 class RotateTransform(SpriteTransformEvent):
 	def __init__(**kwargs):
 		super().__init__(kwargs)
@@ -394,6 +480,9 @@ class RotateTransform(SpriteTransformEvent):
 		else:
 			self.endAngle = self.angle
 		return i
+
+	def getSaveString(self):
+		return f'R,{self._getBaseSaveString()},{self.angle},{self.endAngle}'
 
 class ColorTransform(SpriteTransformEvent):
 	def __init__(**kwargs):
@@ -414,7 +503,10 @@ class ColorTransform(SpriteTransformEvent):
 			self.endColor = (0,0,0)
 		return i
 
-class Loop(SpriteChildEvent):
+	def getSaveString(self):
+		return f'C,{self._getBaseSaveString()},{",".join(self.color)},{"".join(self.endColor)}'
+
+class Loop(Event):
 	def __init__(**kwargs):
 		self.time = kwargs.get('time', 0)
 		self.loopCount = kwargs.get('loopCount', 0)
@@ -426,6 +518,9 @@ class Loop(SpriteChildEvent):
 		self.loopCount = int(eventInfo[i])
 		i += 1
 		return i
+
+	def _getBaseSaveString(self):
+		return f'L,{self.time},{self.loopCount}'
 
 class Trigger:
 	PASSING = None
@@ -517,15 +612,13 @@ Trigger.PASSING = Trigger('Passing')
 Trigger.FAILING = Trigger('Failing')
 Trigger.HITOBJECTHIT = Trigger('HitObjectHit')
 
-class TriggeredLoop(SpriteChildEvent):
+class TriggeredLoop(Event):
 	def __init__(**kwargs):
 		self.trigger = None
 		self.time = kwargs.get('time', None)
 		self.endTime = kwargs.get('endTime', None)
-		self.triggerGroup = kwargs.get('triggerGroup', None) #apparently only one trigger with given group can be triggered at once
+		self.triggerGroup = kwargs.get('triggerGroup', 0) #apparently only one trigger with given group can be triggered at once
 		self.transformEvents = kwargs.get('transformEvents', [])
-
-	def _parseTriggerGroup
 
 	def _loadInfoFromFile(self, eventInfo, i):
 		self.trigger = Trigger.fromName(eventInfo[i])
@@ -543,6 +636,9 @@ class TriggeredLoop(SpriteChildEvent):
 			i += 1
 		return i
 
+	def _getBaseSaveString(self):
+		return f'T,{str(self.trigger)},{self.time},{self.endTime},{self.triggerGroup}'
+
 class ParametersTransform(SpriteTransformEvent):
 	HFLIP = 0
 	VFLIP = 1
@@ -556,3 +652,6 @@ class ParametersTransform(SpriteTransformEvent):
 		i = super()._loadInfoFromFile(eventInfo, i)
 		self.effect = int(eventInfo[i])
 		return i + 1
+
+	def getSaveString(self):
+		return f'P,{self._getBaseSaveString()},{self.effect}'

@@ -109,8 +109,8 @@ def loadLocalHashes():
 		if bm.mode == mode:
 			if mode == Mode.TAIKO:
 				combosByHash[bm.hash] = bm.circles
-			if bm.mapId != 0:
-				hashesByBm[bm.mapId] = bm.hash
+			if bm.mapID != 0:
+				hashesByBm[bm.mapID] = bm.hash
 			odByHash[bm.hash] = bm.OD
 
 scoresByMapAndMods = {}

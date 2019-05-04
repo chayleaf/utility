@@ -146,9 +146,9 @@ for bm in osudb.beatmaps:
 for bm in osudb.beatmaps:
 	bm.lastPlayed = lastPlayDateByMap[bm.hash]
 
-	if bm.mapId == 0 and bm.mapsetId == -1:
+	if bm.mapID == 0 and bm.mapsetID == -1:
 		if bm.hash in mapInfoByHash.keys():
-			bm.mapId, bm.mapsetId, bm.state = mapInfoByHash[bm.hash]
+			bm.mapID, bm.mapsetID, bm.state = mapInfoByHash[bm.hash]
 		else:
 			pass #TODO load .osu file, need Beatmap class for that
 

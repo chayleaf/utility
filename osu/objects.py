@@ -80,7 +80,7 @@ class HitSound:
 		else:
 			self.sounds &= ~self.CLAP
 
-class MapObject:
+class HitObject:
 	FLAGS_CIRCLE = 1 << 0
 	FLAGS_SLIDER = 1 << 1
 	FLAGS_COMBO_START = 1 << 2
@@ -112,7 +112,7 @@ class MapObject:
 
 	@staticmethod
 	def fromBeatmapFile(f):
-		objectInfo = f.readLine().strip().split(',')
+		objectInfo = f.readLine().split(',')
 		if len(objectInfo) <= 3:
 			raise ValueError('Object info too short')
 
@@ -146,7 +146,7 @@ class MapObject:
 		flags |= (self.comboColorSkip << 4) & self.FLAGS_COMBO_COLOR_SKIP
 		return f'{self.x},{self.y},{self.time},{flags},{self.hitSound.sounds}'
 
-class Circle(MapObject):
+class Circle(HitObject):
 	def __init__(self, **kwargs):
 		super().__init__(kwargs)
 
@@ -160,7 +160,7 @@ class Circle(MapObject):
 	def getSaveString(self):
 		return f'{super().getSaveString()},{self.hitSound._getExtrasString()}'
 
-class Slider(MapObject):
+class Slider(HitObject):
 	LINEAR = 0
 	PERFECT = 1
 	BEZIER = 2
@@ -222,7 +222,7 @@ class Slider(MapObject):
 	def getSaveString(self):
 		return f'{super().getSaveString()},{TYPE_TO_STR[self.sliderType]}|{"|".join(f"{x},{y}" for x,y in self.curvePoints)},{self.repeatCount},{self.sliderLength},{"|".join(str(h.sounds) for h in self.sliderHitSounds)},{"|".join(f"{h.sampleSet}:{h.additionSet}" for h in self.sliderHitSounds)},{self.hitSound._getExtrasString()}'
 
-class Spinner(MapObject):
+class Spinner(HitObject):
 	def __init__(self, **kwargs):
 		super().__init__(kwargs)
 		self.endTime = kwargs.get('endTime', 0)
@@ -238,7 +238,7 @@ class Spinner(MapObject):
 	def getSaveString(self):
 		return f'{super().getSaveString()},{self.endTime},{self.hitSound._getExtrasString()}'
 
-class ManiaHoldNote(MapObject):
+class ManiaHoldNote(HitObject):
 	def __init__(self, **kwargs):
 		super().__init__(kwargs)
 		self.endTime = kwargs.get('endTime', 0)
