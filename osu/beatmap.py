@@ -1,11 +1,7 @@
 from .objects import *
+from .enums import *
 
-class OsuBeatmap:
-	MODE_OSU = 0
-	MODE_TAIKO = 1
-	MODE_CTB = 2
-	MODE_MANIA = 3
-	
+class Beatmap:
 	def __init__(self, path):
 		self.data = {}
 		
@@ -45,13 +41,13 @@ class OsuBeatmap:
 						self.countdown = v == '1'
 					elif k == 'SampleSet':
 						if v == 'Normal':
-							self.sampleSet = OsuObject.SAMPLESET_NORMAL
+							self.sampleSet = self.SAMPLESET_NORMAL
 						elif v == 'Soft':
-							self.sampleSet = OsuObject.SAMPLESET_SOFT
+							self.sampleSet = self.SAMPLESET_SOFT
 						elif v == 'Drum':
-							self.sampleSet = OsuObject.SAMPLESET_DRUM
+							self.sampleSet = self.SAMPLESET_DRUM
 						elif v == 'Auto':
-							self.sampleSet = OsuObject.SAMPLESET_AUTO
+							self.sampleSet = self.SAMPLESET_AUTO
 					elif k == 'StackLeniency':
 						self.stackLeniency = float(v)
 					elif k == 'Mode':
@@ -105,120 +101,6 @@ class OsuBeatmap:
 						self. = 
 			
 			i += 1
-	
-	#Objects
-	
-	MASK_OBJECT_IS_CIRCLE = 1
-	MASK_OBJECT_IS_SLIDER = 2
-	MASK_OBJECT_COMBO_START = 4
-	MASK_OBJECT_IS_SPINNER = 8
-	MASK_OBJECT_COMBO_COLOR_SKIP = 112
-	MASK_OBJECT_IS_HOLD_NOTE = 128 #mania
-	
-	MASK_HITSOUND_NORMAL = 1
-	MASK_HITSOUND_WHISTLE = 2
-	MASK_HITSOUND_FINISH = 4
-	MASK_HITSOUND_CLAP = 8
-	
-	def loadObject(self, initStr):
-		initValues = initStr.split(',')
-		
-		if len(initValues) < 5:
-			raise ValueError('Object info too short')
-		
-		args = {}
-		
-		args['x'] = int(initValues[0])
-		args['y'] = int(initValues[1])
-		args['time'] = int(initValues[2])
-		
-		objectType = int(initValues[3])
-		args['comboStart'] = (objectType & self.MASK_OBJECT_COMBO_START) != 0
-		args['comboColorSkip'] = (objectType & self.MASK_OBJECT_COMBO_COLOR_SKIP) >> 4
-		
-		def parseHitSound(hitSound):
-			return {
-				'hitSoundNormal': (hitSound & self.MASK_HITSOUND_NORMAL) != 0,
-				'hitSoundWhistle': (hitSound & self.MASK_HITSOUND_WHISTLE) != 0,
-				'hitSoundFinish': (hitSound & self.MASK_HITSOUND_FINISH) != 0,
-				'hitSoundClap': (hitSound & self.MASK_HITSOUND_CLAP) != 0
-			}
-		
-		args.update(parseHitSound(int(initValues[4])))
-		
-		def parseExtras(initValues, index):
-			if len(initValues) <= index:
-				return {}
-			
-			if not ':' in initValues[index]:
-				return {}
-			
-			extras = initValues[index].split(':')
-			if len(extras) != 5:
-				return {}
-			
-			ret = {}
-			
-			numericFields = ['sampleSet', 'additionSet', 'customIndex', 'sampleVolume']
-			for name, index in zip(numericFields, range(len(numericFields))):
-				ret[name] = int(extras[index])
-			ret['filename'] = extras[4]
-			
-			return ret
-		
-		if objectType | OsuObject.MASK_IS_CIRCLE:
-			#x,y,time,type,hitSound,extras
-			args.update(parseExtras(initValues, 5))
-			return OsuCircle(args)
-		elif objectType | OsuObject.MASK_IS_SLIDER: 
-			#x,y,time,type,hitSound,sliderType|curvePoint1|curvePoint2...,repeat,pixelLength,edgeHitsounds,edgeAdditions,extras
-			if len(initValues) < 10:
-				raise ValueError('Object info too short')
-			
-			sliderPoints = initValues[5].split('|')
-			slidetType = sliderPoints[0]
-			sliderPoints = sliderPoints[1:]
-			
-			if sliderType == 'L':
-				args['sliderType'] = OsuSlider.SLIDER_LINEAR
-			elif sliderType == 'P':
-				args['sliderType'] = OsuSlider.SLIDER_PERFECT
-			elif sliderType == 'B':
-				args['sliderType'] = OsuSlider.SLIDER_BEZIER
-			elif sliderType == 'C':
-				args['sliderType'] = OsuSlider.SLIDER_CATMULL
-			else:
-				print('Warning: unsupported slider type!')
-			
-			args['curvePoints'] = [tuple(map(int, point.split(':'))) for point in sliderPoints]
-			args['repeatCount'] = int(initValues[6])
-			args['sliderLength'] = int(initValues[7]) #actual slider length, if it doesnt match the points they will be changed apparently
-			
-			args['edgeHitSounds'] = [parseHitSound(hs) for hs in initValues[8].split('|')]
-			args['edgeAdditions'] = []
-			for sampleSets in initValues[9].split('|'):
-				sampleSets = sampleSets.split(':')
-				args['edgeAdditions'].append({'sampleSet': sampleSets[0], 'additionSet': sampleSets[1]})
-			
-			args.update(parseExtras(initValues, 10))
-			return OsuSlider(args)
-		
-		if len(initValues) < 6:
-			raise ValueError('Object info too short')
-		
-		if objectType | OsuObject.MASK_IS_SPINNER:
-			#x,y,time,type,hitSound,endTime,extras
-			args['endTime'] = int(initValues[5])
-			args.update(parseExtras(initValues, 6))
-			return OsuSpinner(args)
-		elif objectType | OsuObject.MASK_IS_HOLD_NOTE:
-			#x,y,time,type,hitSound,endTime:extras
-			holdNoteValues = initValues[5].split(':', 1)
-			args['endTime'] = int(holdNoteValues[0])
-			args.update(parseExtras(holdNoteValues, 1))
-			return OsuHoldNote(args)
-		
-		raise ValueError('Invalid object type')
 	
 	#Events
 	

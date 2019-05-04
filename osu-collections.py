@@ -107,11 +107,11 @@ def loadLocalHashes():
 	db = OsuDb(os.path.join(osuBase, 'osu!.db'))
 	for bm in db.beatmaps:
 		if bm.mode == mode:
-			if mode == MODE_TAIKO:
-				combosByHash[bm.md5] = bm.circles
+			if mode == Mode.TAIKO:
+				combosByHash[bm.hash] = bm.circles
 			if bm.mapId != 0:
-				hashesByBm[bm.mapId] = bm.md5
-			odByHash[bm.md5] = bm.OD
+				hashesByBm[bm.mapId] = bm.hash
+			odByHash[bm.hash] = bm.OD
 
 scoresByMapAndMods = {}
 
@@ -163,7 +163,7 @@ def loadReplays(base=None): #also backup
 		if r.username != username or r.mapHash not in combosByHash.keys() or totalHits(r.mode, r.cntMiss, r.cnt50, r.cnt100, r.cnt300, r.cntGeki, r.cntKatu) < combosByHash[r.mapHash]:
 			continue
 
-		k = f'{r.mapHash}|{r.mods}'
+		k = f'{r.mapHash}|{int(r.mods)}'
 		if not k in scoresByMapAndMods.keys() or scoresByMapAndMods[k][0] < r.score:
 			scoresByMapAndMods[k] = (r.score, accuracy(r.mode, r.cntMiss, r.cnt50, r.cnt100, r.cnt300, r.cntGeki, r.cntKatu))
 
@@ -233,10 +233,10 @@ def betterScoreExists(m, h, acc):
 		else:
 			OD = 5
 
-		if m & MOD_EZ:
+		if m.EZ:
 			OD *= 0.5
 
-		if m & MOD_HR:
+		if m.HR:
 			OD = min(10, OD * 1.4)
 
 		if OD > 5:
@@ -246,7 +246,7 @@ def betterScoreExists(m, h, acc):
 		else:
 			hw = 70
 
-		if m & MOD_DT:
+		if m.DT:
 			hw /= 1.5
 
 		return hw
@@ -255,20 +255,20 @@ def betterScoreExists(m, h, acc):
 	acc0 = accGroup(acc)
 	#accDiff0 = (0 if m & MOD_EZ else (2 if m & MOD_HR else 1))
 	hit300_0 = hitWindow(h, m)
-	spdDiff0 = (0 if m & MOD_HT else (2 if m & MOD_DT else 1))
-	visDiff0 = (2 if (m & MOD_HD) and (m & MOD_FL) else (1 if m & MOD_FL else (1 if m & MOD_HD else 0)))
+	spdDiff0 = (0 if m.HT else (2 if m.DT else 1))
+	visDiff0 = (2 if m.HD and m.FL else (1 if m.HD or m.FL else 0))
 
 	def isStrictlyBetterScore(k):
 		score, acc = scoresByMapAndMods[k]
 		h,m = k.split('|')
-		m = int(m)
-		if m & MOD_NF or m & MODS_AUTO:
+		m = Mods(int(m))
+		if m.NF or m.auto:
 			return False
 		acc1 = accGroup(acc)
 		#accDiff1 = (0 if m & MOD_EZ else (2 if m & MOD_HR else 1))
 		hit300_1 = hitWindow(h, m)
-		spdDiff1 = (0 if m & MOD_HT else (2 if m & MOD_DT else 1))
-		visDiff1 = (2 if (m & MOD_HD) and (m & MOD_FL) else (1 if m & MOD_FL else (1 if m & MOD_HD else 0)))
+		spdDiff1 = (0 if m.HT else (2 if m.DT else 1))
+		visDiff1 = (2 if m.HD and m.FL else (1 if m.HD or m.FL else 0))
 		if acc1 < acc0 or hit300_1 > hit300_0 or spdDiff1 < spdDiff0 or visDiff1 < visDiff0:
 			return False
 		if acc1 == acc0 and hit300_1 == hit300_0 and spdDiff1 == spdDiff0 and visDiff1 == visDiff0:
@@ -282,29 +282,29 @@ def betterScoreExists(m, h, acc):
 
 for k,v in scoresByMapAndMods.items():
 	h, m = k.split('|')
-	m = int(m)
+	m = Mods(int(m))
 	score, acc = v
-	if m & MOD_NF or m & MODS_AUTO or betterScoreExists(m, h, acc):
+	if m.NF or m.auto or betterScoreExists(m, h, acc):
 		continue # dont count NF scores (cuz they are usually shit) or autopilot/relax/etc scores
 
 	modsStr = ''
 
 	#collections are sorted by name, so show most significant (in terms of acc) mods first, visual mods later
 
-	if m & MOD_DT:
+	if m.DT:
 		modsStr += 'DT'
-	elif m & MOD_HT:
+	elif m.HT:
 		modsStr += 'HT'
 
-	if m & MOD_EZ:
+	if m.EZ:
 		modsStr += 'EZ'
-	elif m  & MOD_HR:
+	elif m.HR:
 		modsStr += 'HR'
 
-	if m & MOD_HD:
+	if m.HD:
 		modsStr += 'HD'
 
-	if m & MOD_FL:
+	if m.FL:
 		modsStr += 'FL'
 
 	if modsStr == '':
@@ -318,8 +318,8 @@ for k,v in scoresByMapAndMods.items():
 		oldN = n
 
 	collName = f'{modsStr} {accStr}'
-	collectionsToAdd[collName] = collectionsToAdd.get(collName, [])
-	collectionsToAdd[collName].append(h)
+	collectionsToAdd[collName] = collectionsToAdd.get(collName, set())
+	collectionsToAdd[collName].add(h)
 
 toDelete = []
 
@@ -334,7 +334,7 @@ for i in toDelete[::-1]:
 	del db.collections[i]
 
 for k,v in collectionsToAdd.items():
-	db.collections.append(Collection(name=k, hashes=v))
+	db.collections.append(Collection(name=k, hashes=list(v)))
 
 db.save()
 print('Done!')

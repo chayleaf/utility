@@ -1,6 +1,6 @@
 from .utility import BinaryFile
-import lzma
-from .enums import MODE_MANIA, MODE_CTB
+import lzma, datetime
+from .enums import Mode, Mods
 
 class Replay(BinaryFile):
 	def __init__(self, filename=None, ignoreReplayData=False):
@@ -8,7 +8,7 @@ class Replay(BinaryFile):
 		self.version = 0
 		self.mapHash = ''
 		self.username = ''
-		self.replayHash = ''
+		self.hash = ''
 		self.cnt300 = 0
 		self.cnt100 = 0
 		self.cnt50 = 0
@@ -18,9 +18,9 @@ class Replay(BinaryFile):
 		self.score = 0
 		self.combo = 0
 		self.perfectCombo = 0
-		self.mods = 0
+		self.mods = Mods()
 		self.hpGraph = []
-		self.timestamp = 0
+		self.timestamp = datetime.datetime(1,1,1)
 		self.scoreID = 0
 		self.replayData = []
 		self.randomSeed = None
@@ -45,7 +45,7 @@ class Replay(BinaryFile):
 		self.version = db.readInt()
 		self.mapHash = db.readOsuString()
 		self.username = db.readOsuString()
-		self.replayHash = db.readOsuString()
+		self.hash = db.readOsuString()
 		self.cnt300 = db.readShort()
 		self.cnt100 = db.readShort()
 		self.cnt50 = db.readShort()
@@ -55,21 +55,22 @@ class Replay(BinaryFile):
 		self.score = db.readInt()
 		self.combo = db.readShort()
 		self.perfectCombo = db.readByte()
-		self.mods = db.readInt()
+		self.mods = Mods(db.readInt())
 		hpBarStr = db.readOsuString()
 		self.hpGraph = []
-		for uv in hpBarStr.split(','):
-			if len(uv) == 0:
-				continue
-			t, val = uv.split('|')
-			t = int(t)
-			val = float(val)
-			self.hpGraph.append((t, val))
-		self.timestamp = db.readOsuDate()
+		if hpBarStr is not None:
+			for uv in hpBarStr.split(','):
+				if len(uv) == 0:
+					continue
+				t, val = uv.split('|')
+				t = int(t)
+				val = float(val)
+				self.hpGraph.append((t, val))
+		self.timestamp = db.readOsuTimestamp()
 		rawReplayData = db.readBytes(len32=True)
 		self.scoreID = db.readLL()
 
-		if not ignoreReplayData and rawReplayData != b'':
+		if not ignoreReplayData and rawReplayData is not None and len(rawReplayData) > 0:
 			replayData = [s for s in lzma.decompress(data=rawReplayData).decode('utf-8').split(',') if len(s) > 0]
 			self.replayData = []
 			for wxyz in replayData[:-1] if self.version >= 20130319 else replayData:
@@ -87,7 +88,7 @@ class Replay(BinaryFile):
 		scoredb.writeInt(self.version)
 		scoredb.writeOsuString(self.mapHash)
 		scoredb.writeOsuString(self.username)
-		scoredb.writeOsuString(self.replayHash)
+		scoredb.writeOsuString(self.hash)
 		scoredb.writeShort(self.cnt300)
 		scoredb.writeShort(self.cnt100)
 		scoredb.writeShort(self.cnt50)
@@ -98,16 +99,19 @@ class Replay(BinaryFile):
 		scoredb.writeShort(self.combo)
 		scoredb.writeByte(self.perfectCombo)
 		scoredb.writeInt(self.mods)
-		scoredb.writeOsuString('' if stripData or len(self.hpGraph) == 0 else ','.join(f'{u}|{v}' for u,v in self.hpGraph) + ',')
-		scoredb.writeOsuDate(self.timestamp)
+		scoredb.writeOsuString(None if stripData or len(self.hpGraph) == 0 else ','.join(f'{u}|{v}' for u,v in self.hpGraph) + ',')
+		scoredb.writeOsuTimestamp(self.timestamp)
 		if stripData or len(self.replayData) == 0:
-			scoredb.writeInt(-1)
+			scoredb.writeBytes(None, len32=True)
 		else:
-			scoredb.writeOsuString(','.join(f'{w}|{x}|{y}|{z}' for w,x,y,z in self.replayData) + (f'-12345|0|0|{self.randomSeed},' if self.version >= 20130319 else ','))
+			s = ','.join(f'{w}|{x}|{y}|{z}' for w,x,y,z in self.replayData) + (f'-12345|0|0|{self.randomSeed},' if self.version >= 20130319 else ',')
+			scoredb.writeBytes(lzma.compress(s.encode('utf-8')), len32=True)
 		scoredb.writeLL(self.scoreID)
 
 	def generateFilename(self):
-		return f'{self.replayHash}-{self.timestamp-504911232000000000}.osr' #ticks since 1600 (1600 * 365.2425 * 24 * 60 * 60 * 10000000 = 504911232000000000)
+		delta = self.timestamp - datetime.datetime(1601,1,1)
+		ticks = ((delta.days * 60 * 60 * 24 + delta.seconds) * 1000000 + delta.microseconds) * 10
+		return f'{self.hash}-{ticks}.osr'
 
 	def __repr__(self):
 		return f'Replay(score={repr(self.score)}, mapHash={repr(self.mapHash)})'

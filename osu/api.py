@@ -6,10 +6,10 @@ from .enums import *
 from .replay import Replay
 
 def convertTime(t):
-	return t.isoformat(' ') #t.strftime('%Y-%m-%d %H:%M:%S')
+	return t.isoformat(' ')
 
 def timeFromString(s):
-	return datetime.strptime(s, '%Y-%m-%d %H:%M:%S')
+	return datetime.fromisoformat(s)
 
 def setUserFromKwargs(kwargs, params):
 	user = kwargs.get('user', 0)
@@ -36,13 +36,13 @@ class Api:
 
 	def getUser(self, **kwargs):
 		url = self.BASE + '/get_user'
-		mode = kwargs.get('mode', MODE_STD)
+		mode = kwargs.get('mode', Mode.STD)
 		eventDays = kwargs.get('eventDays', 31)
 
 		params = {'k':self.key}
 		setUserFromKwargs(kwargs, params)
 
-		if mode != MODE_STD:
+		if mode != Mode.STD:
 			params['m'] = str(mode)
 
 		params['eventDays'] = str(eventDays)
@@ -53,12 +53,12 @@ class Api:
 		url = self.BASE + '/get_scores'
 
 		beatmap = kwargs.get('beatmap')
-		mode = kwargs.get('mode', MODE_STD)
+		mode = kwargs.get('mode', Mode.STD)
 		limit = kwargs.get('limit', 100)
 
 		params = {'k':self.key}
 		setUserFromKwargs(kwargs, params)
-		if mode != MODE_STD:
+		if mode != Mode.STD:
 			params['m'] = str(mode)
 
 		params['limit'] = str(limit)
@@ -69,7 +69,7 @@ class Api:
 	def getReplay(self, **kwargs):
 		url = self.BASE + '/get_replay'
 		beatmap = kwargs.get('beatmap')
-		mode = kwargs.get('mode', MODE_STD)
+		mode = kwargs.get('mode', Mode.STD)
 		apiScore = kwargs.get('apiScore', None)
 
 		params = {'k':self.key,'b':str(beatmap),'m':str(mode)}
@@ -97,7 +97,7 @@ class Api:
 		until=kwargs.get('until', datetime.utcnow())
 		beatmapset = kwargs.get('beatmapset', 0)
 		beatmap = kwargs.get('beatmap', 0)
-		mode = kwargs.get('mode', -1)
+		mode = kwargs.get('mode', Mode.ALL)
 		includeConverts = kwargs.get('includeConverts', False)
 		mapHash = kwargs.get('mapHash', '')
 		limit = kwargs.get('limit', 0)
@@ -113,7 +113,7 @@ class Api:
 		
 		setUserFromKwargs(kwargs, params)
 
-		if mode >= MODE_STD and mode <= MODE_LAST:
+		if mode >= Mode.STD and mode <= Mode.LAST:
 			params['m'] = str(mode)
 
 		if includeConverts:
@@ -157,9 +157,6 @@ class Api:
 		ret = [*beatmapsAll.values()]
 
 		return ret
-
-
-
 
 class ApiV2:
 	pass

@@ -1,3 +1,6 @@
+from .enums import *
+import datetime, os.path
+
 class BeatmapMetadata:
 	def __init__(self):
 		self.artistA = ''
@@ -7,14 +10,14 @@ class BeatmapMetadata:
 		self.creator = ''
 		self.diffName = ''
 		self.mp3 = ''
-		self.md5 = ''
+		self.hash = ''
 		self.filename = ''
 
 		self.state = 0
 		self.circles = 0
 		self.sliders = 0
 		self.spinners = 0
-		self.editDate = 0
+		self.lastEdit = datetime.datetime(1,1,1)
 		self.AR = 0.0
 		self.CS = 0.0
 		self.HP = 0.0
@@ -30,24 +33,27 @@ class BeatmapMetadata:
 		self.mapId = 0
 		self.mapsetId = 0
 		self.threadId = 0
-		self.rating = 0
+		self.playerRank = [Rank.N for i in range(4)]
 		self.offset = 0
 		self.stackLeniency = 0.0
 		self.mode = 0
 		self.source = ''
 		self.tags = ''
-		self.audioOffset = 0
-		self.letterbox = ''
-		self.notPlayed = 0
-		self.lastPlayed = 0
+		self.onlineOffset = 0
+		self.onlineTitle = ''
+		self.isNew = 0
+		self.lastPlayed = datetime.datetime(1,1,1)
 		self.osz2 = 0
-		self.path = ''
-		self.lastSync = 0
+		self.directory = ''
+		self.lastSync = datetime.datetime(1,1,1)
 		self.disableHitSounds = 0
 		self.disableSkin = 0
 		self.disableSb = 0
-		
+		self.disableVideo = 0
 		self.bgDim = 0
+
+		self.lastEdit = 0
+		self.unk0 = 0
 
 	@classmethod
 	def fromOsuDb(cls, osudb):
@@ -59,14 +65,14 @@ class BeatmapMetadata:
 		self.creator = osudb.readOsuString()
 		self.diffName = osudb.readOsuString()
 		self.mp3 = osudb.readOsuString()
-		self.md5 = osudb.readOsuString()
+		self.hash = osudb.readOsuString()
 		self.filename = osudb.readOsuString()
 
 		self.state = osudb.readByte()
 		self.circles = osudb.readShort()
 		self.sliders = osudb.readShort()
 		self.spinners = osudb.readShort()
-		self.editDate = osudb.readOsuDate()
+		self.lastEdit = osudb.readOsuTimestamp()
 		self.AR = osudb.readFloat()
 		self.CS = osudb.readFloat()
 		self.HP = osudb.readFloat()
@@ -79,6 +85,7 @@ class BeatmapMetadata:
 			for i in range(modComboCnt):
 				mods = int(osudb.readOsuAny())
 				sr = float(osudb.readOsuAny())
+				SRs[mods] = sr
 			self.SR.append(SRs)
 		self.drainTime = osudb.readInt()
 		self.totalTime = osudb.readInt()
@@ -95,37 +102,158 @@ class BeatmapMetadata:
 		self.mapId = osudb.readInt()
 		self.mapsetId = osudb.readInt()
 		self.threadId = osudb.readInt()
-		self.rating = osudb.readInt()
+		for i in [Mode.OSU, Mode.CTB, Mode.TAIKO, Mode.MANIA]:
+			self.playerRank[i] = osudb.readByte()
 		self.offset = osudb.readShort()
 		self.stackLeniency = osudb.readFloat()
 		self.mode = osudb.readByte()
 		self.source = osudb.readOsuString()
 		self.tags = osudb.readOsuString()
-		self.audioOffset = osudb.readShort()
-		self.letterbox = osudb.readOsuString()
-		self.notPlayed = osudb.readByte()
-		self.lastPlayed = osudb.readOsuDate()
+		self.onlineOffset = osudb.readShort()
+		self.onlineTitle = osudb.readOsuString()
+		self.isNew = osudb.readByte()
+		self.lastPlayed = osudb.readOsuTimestamp()
 		self.osz2 = osudb.readByte()
-		self.path = osudb.readOsuString()
-		self.lastSync = osudb.readOsuDate()
+		self.directory = osudb.readOsuString()
+		self.lastSync = osudb.readOsuTimestamp()
 		self.disableHitSounds = osudb.readByte()
 		self.disableSkin = osudb.readByte()
 		self.disableSb = osudb.readByte()
-		osudb.readByte()
+		self.disableVideo = osudb.readByte()
 		self.bgDim = osudb.readShort()
 
-		if osudb.version <= 20160403:
-			osudb.readInt()
-		else:
-			osudb.readLL()
+		self.lastEdit = osudb.readInt()
+		if osudb.version > 20160403:
+			self.unk0 = osudb.readInt()
+
+		return self
+
+	def writeToDatabase(self, osudb):
+		osudb.writeOsuString(self.artistA)
+		osudb.writeOsuString(self.artistU)
+		osudb.writeOsuString(self.titleA)
+		osudb.writeOsuString(self.titleU)
+		osudb.writeOsuString(self.creator)
+		osudb.writeOsuString(self.diffName)
+		osudb.writeOsuString(self.mp3)
+		osudb.writeOsuString(self.hash)
+		osudb.writeOsuString(self.filename)
+
+		osudb.writeByte(self.state)
+		osudb.writeShort(self.circles)
+		osudb.writeShort(self.sliders)
+		osudb.writeShort(self.spinners)
+		osudb.writeOsuTimestamp(self.lastEdit)
+		osudb.writeFloat(self.AR)
+		osudb.writeFloat(self.CS)
+		osudb.writeFloat(self.HP)
+		osudb.writeFloat(self.OD)
+		osudb.writeDouble(self.SV)
+		for SRs in self.SR:
+			osudb.writeInt(len(SRs.keys()))
+			for mods,sr in SRs.items():
+				osudb.writeByte(8)
+				osudb.writeInt(mods)
+				osudb.writeByte(0xD)
+				osudb.writeDouble(sr)
+		osudb.writeInt(self.drainTime)
+		osudb.writeInt(self.totalTime)
+		osudb.writeInt(self.previewTime)
+
+		osudb.writeInt(len(self.timingPoints))
+		for msPerBeat, time, inherit in self.timingPoints:
+			osudb.writeDouble(msPerBeat)
+			osudb.writeDouble(time)
+			osudb.writeByte(inherit)
+
+		osudb.writeInt(self.mapId)
+		osudb.writeInt(self.mapsetId)
+		osudb.writeInt(self.threadId)
+		for i in [Mode.OSU, Mode.CTB, Mode.TAIKO, Mode.MANIA]:
+			osudb.writeByte(self.playerRank[i])
+		osudb.writeShort(self.offset)
+		osudb.writeFloat(self.stackLeniency)
+		osudb.writeByte(self.mode)
+		osudb.writeOsuString(self.source)
+		osudb.writeOsuString(self.tags)
+		osudb.writeShort(self.onlineOffset)
+		osudb.writeOsuString(self.onlineTitle)
+		osudb.writeByte(self.isNew)
+		osudb.writeOsuTimestamp(self.lastPlayed)
+		osudb.writeByte(self.osz2)
+		osudb.writeOsuString(self.directory)
+		osudb.writeOsuTimestamp(self.lastSync)
+		osudb.writeByte(self.disableHitSounds)
+		osudb.writeByte(self.disableSkin)
+		osudb.writeByte(self.disableSb)
+		osudb.writeByte(self.disableVideo)
+		osudb.writeShort(self.bgDim)
+
+		osudb.writeInt(self.lastEdit)
+		if osudb.version > 20160403:
+			osudb.writeInt(self.unk0)
 
 		return self
 
 	def hasSRData(self, mode=0):
 		return len(self.SR[mode]) > 0
 
-	def __str__(self):
-		return f'{self.artistU if self.artistU != "" else self.artistA} - {self.titleU if self.titleU != "" else self.titleA} [{self.diffName}]'
+	@property
+	def path(self):
+		return os.path.join(self.directory, self.filename)
+	@path.setter
+	def path(self, val):
+		dirFile = val.split('/')
+		if len(dirFile) == 1:
+			dirFile = val.split('\\')
+		if len(dirFile) != 2:
+			raise ValueError('Invalid path')
+		self.directory = dirFile[0]
+		self.filename = dirFile[1]
 
-	def filePath(self):
-		return f'{self.path}/{self.filename}'
+	@property
+	def osuRank(self):
+		return self.playerRank[Mode.OSU]
+	@osuRank.setter
+	def osuRank(self, val):
+		self.playerRank[Mode.OSU] = val
+	stdRank = osuRank
+
+	@property
+	def taikoRank(self):
+		return self.playerRank[Mode.TAIKO]
+	@osuRank.setter
+	def taikoRank(self, val):
+		self.playerRank[Mode.TAIKO] = val
+
+	@property
+	def ctbRank(self):
+		return self.playerRank[Mode.CTB]
+	@osuRank.setter
+	def ctbRank(self, val):
+		self.playerRank[Mode.CTB] = val
+
+	@property
+	def maniaRank(self):
+		return self.playerRank[Mode.MANIA]
+	@osuRank.setter
+	def maniaRank(self, val):
+		self.playerRank[Mode.MANIA] = val
+
+	@property
+	def artist(self):
+		if self.artistU is not None and len(self.artistU) > 0:
+			return self.artistU
+		return self.artistA
+
+	@property
+	def title(self):
+		if self.titleU is not None and len(self.titleU) > 0:
+			return self.titleU
+		return self.titleA
+
+	def __str__(self):
+		return f'{self.artist} - {self.title} [{self.diffName}]'
+
+	def __repr__(self):
+		return f'BeatmapMetadata(hash={repr(self.hash)}, artist={repr(self.artist)}, title={repr(self.title)}, diffName={repr(self.diffName)})'
