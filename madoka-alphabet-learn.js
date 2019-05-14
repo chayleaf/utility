@@ -8,7 +8,7 @@
 // ==/UserScript==
 
 //config start
-var stage = 6;
+var letterCount = 6; //letters to replace, ordered by usage frequency
 var allToUpper = false;
 var allToLower = true;
 var transformCyrillic = true;
@@ -16,7 +16,7 @@ var transformCyrillic = true;
 //config that you probably shouldn't change
 var finalTransforms = {'v':'V', 'x':'X'}; //v and x letters' modern style is unknown, use archaic instead
 var styleContent = "font-family:MadokaRunes!important;";
-var tag_blacklist = ["text"]; //script, style and title are there by default
+var tagBlacklist = ["text"]; //script, style and title are there by default
 //config end
 
 //       charset: 1234567890qwertyuiopasdfghjklzxcvbnmßüöä. English wikipedia is used for reference. Upper because 'ß'.toUpperCase() == 'SS', not 'ẞ'
@@ -27,9 +27,11 @@ var lowFreq = charFreq.toLowerCase();
 
 var marker = "w17ch_k155"; //a random string used to mark stuff already affected by script
 
+letterCount = Math.min(charFreq.length, letterCount);
+
 var style = document.createElement("style");
 style.type = "text/css";
-style.innerHTML = (stage == 40 ? "*" : "." + marker) + " { " + styleContent + " }";
+style.innerHTML = (letterCount == charFreq.length ? "*" : "." + marker) + " { " + styleContent + " }";
 document.lastChild.appendChild(style);
 
 //https://github.com/greybax/cyrillic-to-translit-js/blob/master/CyrillicToTranslit.js
@@ -37,7 +39,7 @@ const cyr2lat = {"а": "a","б": "b","в": "v","ґ": "g","г": "g","д": "d","е
 
 function shouldRunify(input) {
 	var i = lowFreq.indexOf(input.toLowerCase());
-	return i >= 0 && i < stage;
+	return i >= 0 && i < letterCount;
 }
 
 function runifiedSpan(input) {
@@ -132,7 +134,7 @@ function runifyNode(node, descend=false) {
 	if(node.tagName) {
 		var tag = node.tagName.toLowerCase();
 
-		if(tag == "script" || tag == "style" || tag == "title" || tag_blacklist.indexOf(tag) >= 0) {
+		if(tag == "script" || tag == "style" || tag == "title" || tagBlacklist.indexOf(tag) >= 0) {
 			return;
 		}
 	}
@@ -204,4 +206,5 @@ var config2 = {
 
 var observer = new MutationObserver(subscriber);
 
-runifyNode(document, true);
+if(letterCount != charFreq.length)
+	runifyNode(document, true);
