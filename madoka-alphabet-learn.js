@@ -13,9 +13,10 @@
 // ==/UserScript==
 
 //config start
+var archaic = GM_getValue('archaic', false);
 var letterCount = GM_getValue('letterCount', 0); //letters to replace, ordered by usage frequency
-var allToUpper = false;
-var allToLower = true;
+var allToUpper = !archaic;
+var allToLower = archaic;
 var transformCyrillic = true;
 
 //config that you probably shouldn't change
@@ -39,6 +40,7 @@ var style = GM_addStyle((letterCount == charFreq.length ? "*" : "." + marker) + 
 
 //https://github.com/greybax/cyrillic-to-translit-js/blob/master/CyrillicToTranslit.js
 const cyr2lat = {"а": "a","б": "b","в": "v","ґ": "g","г": "g","д": "d","е": "e","ё": "yo","є": "ye","ж": "zh","з": "z","и": "i","і": "i","ї": "yi","й": "i","к": "k","л": "l","м": "m","н": "n","о": "o","п": "p","р": "r","с": "s","т": "t","у": "u","ф": "f","х": "h","ц": "c","ч": "ch","ш": "sh","щ": "sh'","ъ": "'","ы": "y","ь": "'","э": "e","ю": "yu","я": "ya",};
+finalTransforms['SS'] = 'ẞ';
 
 function shouldRunify(input) {
 	var i = lowFreq.indexOf(input.toLowerCase());
@@ -52,7 +54,7 @@ function runifiedSpan(input) {
         if(i < 0) {
             text += input[j];
         } else {
-            var c = ((!allToLower && (input[j] === input.toUpperCase() || allToUpper)) ? charFreq[i] : lowFreq[i]);
+            var c = ((!allToUpper && (input[j] === input.toLowerCase() || allToLower)) ? lowFreq[i] : charFreq[i]);
             if(finalTransforms[c]) {
             	text += finalTransforms[c];
             } else {
@@ -151,7 +153,7 @@ function runifyNode(node, descend=false) {
 	}
 
 	for(i = 0; i < node.childNodes.length; ++i) {
-		if(node.childNodes[i].nodeType == 3) { //text node{
+		if(node.childNodes[i].nodeType == 3) { //text node
 			var upd = translate(node.childNodes[i].nodeValue);
 			if(upd.length == 0) { //text node ends up being removed
 				node.removeChild(node.childNodes[i]);
@@ -164,6 +166,44 @@ function runifyNode(node, descend=false) {
 				}
 				i += upd.length - 1; //we added a bunch of nodes, update current index to reflect that
 			}
+		}
+	}
+}
+
+function updateStyle(node, descend=false) {
+	var i = 0;
+	if(descend && node.children) {
+		for(i = 0; i < node.children.length; ++i) {
+			updateStyle(node.children[i], descend);
+		}
+	}
+
+	if(!node.childNodes) {
+		return;
+	}
+
+	for(i = 0; i < node.childNodes.length; ++i) {
+		if(node.childNodes[i].nodeType == 1 && node.childNodes[i].classList && node.childNodes[i].classList.contains(marker)) {
+			var text = "";
+			var input = node.childNodes[i].innerText;
+			for(var j = 0; j < input.length; ++j) {
+				var k = lowFreq.indexOf(input[j]);
+				if(k < 0) {
+					k = charFreq.indexOf(input[j]);
+				}
+
+		        if(k < 0) {
+		            text += input[j];
+		        } else {
+		            var c = ((!allToUpper && (input[j] === input.toLowerCase() || allToLower)) ? lowFreq[k] : charFreq[k]);
+		            if(finalTransforms[c]) {
+		            	text += finalTransforms[c];
+		            } else {
+		            	text += c;
+		            }
+		        }
+			}
+			node.childNodes[i].innerText = text;
 		}
 	}
 }
@@ -209,8 +249,7 @@ var config2 = {
 
 var observer = new MutationObserver(subscriber);
 
-if(letterCount != charFreq.length)
-	runifyNode(document, true);
+runifyNode(document, true);
 
 GM_addValueChangeListener('letterCount', function(name, old_value, new_value, remote) {
 	letterCount = new_value;
@@ -272,4 +311,16 @@ GM_registerMenuCommand('Undo one of the two above options', function() {
 	if(letterCount < oldLC) {
 		window.location.reload(false);
 	}
+});
+
+GM_registerMenuCommand('Switch between modern and archaic styles', function() {
+	archaic = !archaic;
+	allToUpper = !archaic;
+	allToLower = archaic;
+	GM_setValue('archaic', archaic);
+	updateStyle(document, true);
+	if(archaic)
+		alert('Switching to archaic style');
+	else
+		alert('Switching to modern style (except letters V and X)');
 });
