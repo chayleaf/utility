@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Madoka ftw
 // @namespace    *
-// @version      0.1
+// @version      0.1.2
 // @description  Madoka ftw
 // @author       pavlukivan
 // @match        *://*/*
@@ -10,6 +10,8 @@
 // @grant        GM_setValue
 // @grant        GM_addValueChangeListener
 // @grant        GM_registerMenuCommand
+// @grant        GM_getResourceURL
+// @resource     madokaFont https://github.com/pavlukivan/utility/raw/master/MadokaRunes-2.0.ttf
 // ==/UserScript==
 
 //config start
@@ -35,7 +37,9 @@ var lowFreq = charFreq.toLowerCase();
 var marker = "w17ch_k155"; //a random string used to mark stuff already affected by script
 
 letterCount = Math.min(charFreq.length, letterCount);
-
+var a = GM_getResourceURL('madokaFont');
+console.log(a);
+GM_addStyle("@font-face { font-family:MadokaRunes;src:url('" + a + "'); }");
 var style = GM_addStyle((letterCount == charFreq.length ? "*" : "." + marker) + " { " + styleContent + " }");
 
 //https://github.com/greybax/cyrillic-to-translit-js/blob/master/CyrillicToTranslit.js
@@ -139,7 +143,7 @@ function runifyNode(node, descend=false) {
 	if(node.tagName) {
 		var tag = node.tagName.toLowerCase();
 
-		if(tag == "script" || tag == "style" || tag == "title" || tagBlacklist.indexOf(tag) >= 0) {
+		if(tag == "script" || tag == "style" || tag == "title" || tag == "textarea" || tagBlacklist.indexOf(tag) >= 0) {
 			return;
 		}
 	}
