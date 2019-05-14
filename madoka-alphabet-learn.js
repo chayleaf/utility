@@ -319,8 +319,9 @@ GM_registerMenuCommand('Switch between modern and archaic styles', function() {
 	allToLower = archaic;
 	GM_setValue('archaic', archaic);
 	updateStyle(document, true);
-	if(archaic)
+	if(archaic) {
 		alert('Switching to archaic style');
-	else
+	} else {
 		alert('Switching to modern style (except letters V and X)');
+	}
 });
