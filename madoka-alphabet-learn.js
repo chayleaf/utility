@@ -5,10 +5,15 @@
 // @description  Madoka ftw
 // @author       pavlukivan
 // @match        *://*/*
+// @grant        GM_addStyle
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_addValueChangeListener
+// @grant        GM_registerMenuCommand
 // ==/UserScript==
 
 //config start
-var letterCount = 6; //letters to replace, ordered by usage frequency
+var letterCount = GM_getValue('letterCount', 0); //letters to replace, ordered by usage frequency
 var allToUpper = false;
 var allToLower = true;
 var transformCyrillic = true;
@@ -17,6 +22,7 @@ var transformCyrillic = true;
 var finalTransforms = {'v':'V', 'x':'X'}; //v and x letters' modern style is unknown, use archaic instead
 var styleContent = "font-family:MadokaRunes!important;";
 var tagBlacklist = ["text"]; //script, style and title are there by default
+var lettersChildren = {'A':1, 'O':1, 'U':1}; //count of letters that should be activated along with these. Currently only zero/one is supported.
 //config end
 
 //       charset: 1234567890qwertyuiopasdfghjklzxcvbnmßüöä. English wikipedia is used for reference. Upper because 'ß'.toUpperCase() == 'SS', not 'ẞ'
@@ -29,10 +35,7 @@ var marker = "w17ch_k155"; //a random string used to mark stuff already affected
 
 letterCount = Math.min(charFreq.length, letterCount);
 
-var style = document.createElement("style");
-style.type = "text/css";
-style.innerHTML = (letterCount == charFreq.length ? "*" : "." + marker) + " { " + styleContent + " }";
-document.lastChild.appendChild(style);
+var style = GM_addStyle((letterCount == charFreq.length ? "*" : "." + marker) + " { " + styleContent + " }");
 
 //https://github.com/greybax/cyrillic-to-translit-js/blob/master/CyrillicToTranslit.js
 const cyr2lat = {"а": "a","б": "b","в": "v","ґ": "g","г": "g","д": "d","е": "e","ё": "yo","є": "ye","ж": "zh","з": "z","и": "i","і": "i","ї": "yi","й": "i","к": "k","л": "l","м": "m","н": "n","о": "o","п": "p","р": "r","с": "s","т": "t","у": "u","ф": "f","х": "h","ц": "c","ч": "ch","ш": "sh","щ": "sh'","ъ": "'","ы": "y","ь": "'","э": "e","ю": "yu","я": "ya",};
@@ -208,3 +211,65 @@ var observer = new MutationObserver(subscriber);
 
 if(letterCount != charFreq.length)
 	runifyNode(document, true);
+
+GM_addValueChangeListener('letterCount', function(name, old_value, new_value, remote) {
+	letterCount = new_value;
+	if(old_value == charFreq.length && new_value != charFreq.length) {
+		style.innerHTML = "." + marker + " { " + styleContent + " }";
+	} else if(old_value != charFreq.length && new_value == charFreq.length) {
+		style.innerHTML = "* { " + styleContent + " }";
+	}
+	runifyNode(document, true);
+});
+
+GM_registerMenuCommand('Replace one more letter!', function() {
+	if(letterCount >= charFreq.length) {
+		alert('Already replacing all the known letters!');
+	} else {
+		if(lettersChildren[charFreq[letterCount]]) {
+			letterCount += lettersChildren[charFreq[letterCount]];
+		}
+		++letterCount;
+		GM_setValue('letterCount', letterCount);
+	}
+});
+
+GM_registerMenuCommand('Make one letter turn back (and reload)!', function() {
+	if(letterCount <= 0) {
+		alert('The script is already doing nothing!');
+	} else {
+		--letterCount;
+		if(letterCount > 1) {
+			for(var k in lettersChildren) {
+				if(charFreq[letterCount - lettersChildren[k]] == k) {
+					letterCount -= lettersChildren[k];
+					break;
+				}
+			}
+		}
+		GM_setValue('letterCount', letterCount);
+		window.location.reload(false);
+	}
+});
+
+GM_registerMenuCommand('Replace everything with runes', function() {
+	GM_setValue('oldCount', letterCount);
+	letterCount = charFreq.length;
+	GM_setValue('letterCount', letterCount);
+});
+
+GM_registerMenuCommand('Make everything normal (and reload)', function() {
+	GM_setValue('oldCount', letterCount);
+	letterCount = 0;
+	GM_setValue('letterCount', letterCount);
+	window.location.reload(false);
+});
+
+GM_registerMenuCommand('Undo one of the two above options', function() {
+	var oldLC = letterCount;
+	letterCount = GM_getValue('oldCount', letterCount);;
+	GM_setValue('letterCount', letterCount);
+	if(letterCount < oldLC) {
+		window.location.reload(false);
+	}
+});
