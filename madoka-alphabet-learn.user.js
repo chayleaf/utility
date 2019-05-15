@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Madoka ftw
 // @namespace    *
-// @version      0.1.3.2
+// @version      0.1.3.3
 // @description  Madoka ftw
 // @author       pavlukivan
 // @match        *://*/*
@@ -25,7 +25,7 @@ var transformCyrillic = true;
 var LIMIT_CHILDREN = 1000; //don't descend into elements if they have more than 1000 children
 var finalTransforms = {'v':'V', 'x':'X'}; //v and x letters' modern style is unknown, use archaic instead
 var styleContent = "font-family:MadokaRunes!important;";
-var tagBlacklist = ["text"]; //script, style and title are there by default
+var tagBlacklist = ["text","code"]; //script, style and title are there by default
 var lettersChildren = {'A':1, 'O':1, 'U':1}; //count of letters that should be activated along with these. Currently only zero/one is supported.
 //config end
 
