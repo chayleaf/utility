@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Madoka ftw
 // @namespace    *
-// @version      0.1.2
+// @version      0.1.3
 // @description  Madoka ftw
 // @author       pavlukivan
 // @match        *://*/*
@@ -93,7 +93,7 @@ function translate(input) {
 		} else {
 			newStr += data;
 		}
-		wordStart = (data && data[data.length - 1].match(/[a-z]/i));
+		wordStart = !(newStr && newStr[newStr.length - 1].match(/[a-z]/i));
 	}
 
 	for (let i = 0; i < normalizedInput.length; i++) {
