@@ -22,6 +22,7 @@ var allToLower = archaic;
 var transformCyrillic = true;
 
 //config that you probably shouldn't change
+var LIMIT_CHILDREN = 1000; //don't descend into elements if they have more than 1000 children
 var finalTransforms = {'v':'V', 'x':'X'}; //v and x letters' modern style is unknown, use archaic instead
 var styleContent = "font-family:MadokaRunes!important;";
 var tagBlacklist = ["text"]; //script, style and title are there by default
@@ -37,13 +38,14 @@ var lowFreq = charFreq.toLowerCase();
 var marker = "w17ch_k155"; //a random string used to mark stuff already affected by script
 
 letterCount = Math.min(charFreq.length, letterCount);
-var a = GM_getResourceURL('madokaFont');
-console.log(a);
-GM_addStyle("@font-face { font-family:MadokaRunes;src:url('" + a + "'); }");
+GM_addStyle("@font-face { font-family:MadokaRunes;src:url('" + GM_getResourceURL('madokaFont') + "'); }");
 var style = GM_addStyle((letterCount == charFreq.length ? "*" : "." + marker) + " { " + styleContent + " }");
 
 //https://github.com/greybax/cyrillic-to-translit-js/blob/master/CyrillicToTranslit.js
-const cyr2lat = {"а": "a","б": "b","в": "v","ґ": "g","г": "g","д": "d","е": "e","ё": "yo","є": "ye","ж": "zh","з": "z","и": "i","і": "i","ї": "yi","й": "i","к": "k","л": "l","м": "m","н": "n","о": "o","п": "p","р": "r","с": "s","т": "t","у": "u","ф": "f","х": "h","ц": "c","ч": "ch","ш": "sh","щ": "sh'","ъ": "'","ы": "y","ь": "'","э": "e","ю": "yu","я": "ya",};
+const cyr2lat = {"а": "a","б": "b","в": "v","ґ": "g","г": "g","д": "d","е": "e","ё": "yo","є": "ye","ж": "j","з": "z","и": "i","і": "i","ї": "yi","й": "y","к": "k","л": "l","м": "m","н": "n","о": "o","п": "p","р": "r","с": "s","т": "t","у": "u","ф": "f","х": "h","ц": "c","ч": "ch","ш": "sh","щ": "sh'","ъ": "'","ы": "y","ь": "'","э": "e","ю": "yu","я": "ya",};
+const cyr2latWordStart = {"е":"ye",};
+//used for translating characters that arent available yet back to cyrillics (e.g. if y in ye isnt available, we show y as й and e as runes)
+var lat2cyr = {"a":"а","b":"б","c":"ц","d":"д","e":"е","f":"ф","g":"г","h":"х","i":"и","j":"ж","k":"к","l":"л","m":"м","n":"н","o":"о","p":"п","q":"к","r":"р","s":"с","t":"т","u":"у","v":"в","w":"в","x":"з","y":"й","z":"з",};
 finalTransforms['SS'] = 'ẞ';
 
 function shouldRunify(input) {
@@ -53,19 +55,19 @@ function shouldRunify(input) {
 
 function runifiedSpan(input) {
 	var text = "";
-    for(var j = 0; j < input.length; ++j) {
-        var i = lowFreq.indexOf(input[j].toLowerCase());
-        if(i < 0) {
-            text += input[j];
-        } else {
-            var c = ((!allToUpper && (input[j] === input.toLowerCase() || allToLower)) ? lowFreq[i] : charFreq[i]);
-            if(finalTransforms[c]) {
-            	text += finalTransforms[c];
-            } else {
-            	text += c;
-            }
-        }
-    }
+	for(var j = 0; j < input.length; ++j) {
+		var i = lowFreq.indexOf(input[j].toLowerCase());
+		if(i < 0) {
+			text += input[j];
+		} else {
+			var c = ((!allToUpper && (input[j] === input.toLowerCase() || allToLower)) ? lowFreq[i] : charFreq[i]);
+			if(finalTransforms[c]) {
+				text += finalTransforms[c];
+			} else {
+				text += c;
+			}
+		}
+	}
 
 	var span = document.createElement('span');
 	span.classList.add(marker);
@@ -77,6 +79,7 @@ function translate(input) {
 	const normalizedInput = input.normalize();
 	let newStr = "";
 	let newType = -1;
+	let wordStart = true;
 
 	let ret = [];
 
@@ -90,32 +93,33 @@ function translate(input) {
 		} else {
 			newStr += data;
 		}
+		wordStart = (data && data[data.length - 1].match(/[a-z]/i));
 	}
 
 	for (let i = 0; i < normalizedInput.length; i++) {
-		let strLowerCase = normalizedInput[i].toLowerCase();
+		var lower = normalizedInput[i].toLowerCase();
+		var cyr = (wordStart && cyr2latWordStart[lower]) ? cyr2latWordStart[lower] : cyr2lat[lower];
 
-		var toAdd = "";
-
-		if (!transformCyrillic || !cyr2lat[strLowerCase]) {
-			toAdd = normalizedInput[i];
+		if (!transformCyrillic || !cyr) {
+			addData(normalizedInput[i], shouldRunify(normalizedInput[i]) ? 1 : 0);
 		} else {
-			toAdd = cyr2lat[strLowerCase];
-		}
-
-		var runifyCount = 0;
-
-		for(let j = 0; j < toAdd.length; ++j) {
-			if(shouldRunify(toAdd[j])) {
-				++runifyCount;
+			var useTranslit = false;
+			for(let k = 0; k < cyr.length; ++k) {
+				if(shouldRunify(cyr[k])) {
+					useTranslit = true;
+				}
 			}
-		}
-
-		if(runifyCount == 0) {
-			addData(normalizedInput[i], 0);
-		} else {
-			for(let k = 0; k < toAdd.length; ++k) {
-				addData(toAdd[k], shouldRunify(toAdd[k]) ? 1 : 0);
+			if(useTranslit) {
+				for(let k = 0; k < cyr.length; ++k) {
+					if(shouldRunify(cyr[k])) {
+						addData(cyr[k], 1);
+					} else {
+						var c = lat2cyr[cyr[k]];
+						addData((k != 0 || lower == normalizedInput[i]) ? c : c.toUpperCase(), 0);
+					}
+				}
+			} else {
+				addData(normalizedInput[i], shouldRunify(normalizedInput[i]) ? 1 : 0);
 			}
 		}
 	}
@@ -124,18 +128,6 @@ function translate(input) {
 }
 
 function runifyNode(node, descend=false) {
-	var i = 0;
-	if(descend && node.children) {
-		for(i = 0; i < node.children.length; ++i) {
-			runifyNode(node.children[i], descend);
-		}
-	}
-
-	if(node.getAttribute && node.getAttribute(marker) != "true") {
-		subscribe(node);
-		node.setAttribute(marker, "true");
-	}
-
 	if((node.classList && node.classList.contains(marker)) || !node.childNodes) { //don't change stuff that IS the changes
 		return;
 	}
@@ -146,6 +138,18 @@ function runifyNode(node, descend=false) {
 		if(tag == "script" || tag == "style" || tag == "title" || tag == "textarea" || tagBlacklist.indexOf(tag) >= 0) {
 			return;
 		}
+	}
+
+	var i = 0;
+	if(descend && node.children && node.children.length < LIMIT_CHILDREN) {
+		for(i = 0; i < node.children.length; ++i) {
+			runifyNode(node.children[i], descend);
+		}
+	}
+
+	if(node.getAttribute && node.getAttribute(marker) != "true") {
+		subscribe(node);
+		node.setAttribute(marker, "true");
 	}
 
 	function toNode(e) {
@@ -196,16 +200,16 @@ function updateStyle(node, descend=false) {
 					k = charFreq.indexOf(input[j]);
 				}
 
-		        if(k < 0) {
-		            text += input[j];
-		        } else {
-		            var c = ((!allToUpper && (input[j] === input.toLowerCase() || allToLower)) ? lowFreq[k] : charFreq[k]);
-		            if(finalTransforms[c]) {
-		            	text += finalTransforms[c];
-		            } else {
-		            	text += c;
-		            }
-		        }
+				if(k < 0) {
+					text += input[j];
+				} else {
+					var c = ((!allToUpper && (input[j] === input.toLowerCase() || allToLower)) ? lowFreq[k] : charFreq[k]);
+					if(finalTransforms[c]) {
+						text += finalTransforms[c];
+					} else {
+						text += c;
+					}
+				}
 			}
 			node.childNodes[i].innerText = text;
 		}
