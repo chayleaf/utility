@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Madoka ftw
 // @namespace    *
-// @version      0.1.3.3
+// @version      0.1.4
 // @description  Madoka ftw
 // @author       pavlukivan
 // @match        *://*/*
@@ -178,44 +178,40 @@ function runifyNode(node, descend=false) {
 	}
 }
 
-function updateStyle(node, descend=false) {
-	var i = 0;
-	if(descend && node.children) {
-		for(i = 0; i < node.children.length; ++i) {
-			updateStyle(node.children[i], descend);
-		}
-	}
-
-	if(!node.childNodes) {
+function updateStyle(node) {
+	if(!node.innerText) {
 		return;
 	}
 
-	for(i = 0; i < node.childNodes.length; ++i) {
-		if(node.childNodes[i].nodeType == 1 && node.childNodes[i].classList && node.childNodes[i].classList.contains(marker)) {
-			var text = "";
-			var input = node.childNodes[i].innerText;
-			for(var j = 0; j < input.length; ++j) {
-				var k = lowFreq.indexOf(input[j]);
-				if(k < 0) {
-					k = charFreq.indexOf(input[j]);
-				}
+	var text = "";
+	var input = node.innerText;
+	for(var j = 0; j < input.length; ++j) {
+		var k = lowFreq.indexOf(input[j]);
+		if(k < 0) {
+			k = charFreq.indexOf(input[j]);
+		}
 
-				if(k < 0) {
-					text += input[j];
-				} else {
-					var c = ((!allToUpper && (input[j] === input.toLowerCase() || allToLower)) ? lowFreq[k] : charFreq[k]);
-					if(finalTransforms[c]) {
-						text += finalTransforms[c];
-					} else {
-						text += c;
-					}
-				}
+		if(k < 0) {
+			text += input[j];
+		} else {
+			var c = ((!allToUpper && (input[j] === input.toLowerCase() || allToLower)) ? lowFreq[k] : charFreq[k]);
+			if(finalTransforms[c]) {
+				text += finalTransforms[c];
+			} else {
+				text += c;
 			}
-			node.childNodes[i].innerText = text;
 		}
 	}
+
+	node.innerText = text;
 }
 
+function updateStyleAll() {
+	var a = document.getElementsByClassName(marker);
+	for(var i = 0; i < a.length; ++i) {
+		updateStyle(a[i]);
+	}
+}
 
 function subscriber(mutations) {
 	if(!mutations) {
@@ -266,13 +262,25 @@ GM_addValueChangeListener('letterCount', function(name, old_value, new_value, re
 	} else if(old_value != charFreq.length && new_value == charFreq.length) {
 		style.innerHTML = "* { " + styleContent + " }";
 	}
-	runifyNode(document, true);
+	if(old_value > new_value) {
+		window.location.reload(false);
+	} else {
+		runifyNode(document, true);
+	}
+});
+
+GM_addValueChangeListener('archaic', function(name, old_value, new_value, remote) {
+	archaic = new_value;
+	allToUpper = !archaic;
+	allToLower = archaic;
+	updateStyleAll();
 });
 
 GM_registerMenuCommand('Replace one more letter!', function() {
 	if(letterCount >= charFreq.length) {
 		alert('Already replacing all the known letters!');
 	} else {
+		alert('Added letter ' + charFreq[letterCount]);
 		if(lettersChildren[charFreq[letterCount]]) {
 			letterCount += lettersChildren[charFreq[letterCount]];
 		}
@@ -294,39 +302,27 @@ GM_registerMenuCommand('Make one letter turn back (and reload)!', function() {
 				}
 			}
 		}
+		alert('Removed letter ' + charFreq[letterCount]);
 		GM_setValue('letterCount', letterCount);
-		window.location.reload(false);
 	}
 });
 
 GM_registerMenuCommand('Replace everything with runes', function() {
 	GM_setValue('oldCount', letterCount);
-	letterCount = charFreq.length;
-	GM_setValue('letterCount', letterCount);
+	GM_setValue('letterCount', charFreq.length);
 });
 
 GM_registerMenuCommand('Make everything normal (and reload)', function() {
 	GM_setValue('oldCount', letterCount);
-	letterCount = 0;
-	GM_setValue('letterCount', letterCount);
-	window.location.reload(false);
+	GM_setValue('letterCount', 0);
 });
 
-GM_registerMenuCommand('Undo one of the two above options', function() {
-	var oldLC = letterCount;
-	letterCount = GM_getValue('oldCount', letterCount);;
-	GM_setValue('letterCount', letterCount);
-	if(letterCount < oldLC) {
-		window.location.reload(false);
-	}
+GM_registerMenuCommand('Undo one of the two options above', function() {
+	GM_setValue('letterCount', GM_getValue('oldCount', letterCount));
 });
 
 GM_registerMenuCommand('Switch between modern and archaic styles', function() {
-	archaic = !archaic;
-	allToUpper = !archaic;
-	allToLower = archaic;
-	GM_setValue('archaic', archaic);
-	updateStyle(document, true);
+	GM_setValue('archaic', !archaic);
 	if(archaic) {
 		alert('Switching to archaic style');
 	} else {
