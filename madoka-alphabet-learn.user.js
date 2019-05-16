@@ -11,20 +11,20 @@
 // @grant        GM_addValueChangeListener
 // @grant        GM_registerMenuCommand
 // @grant        GM_getResourceURL
-// @resource     madokaFont https://github.com/pavlukivan/utility/raw/master/MadokaRunes-2.0.ttf
+// @resource     madokaFont https://github.com/pavlukivan/utility/raw/master/MadokaRunesPavlukivan-1.0.ttf
 // ==/UserScript==
 
 //config start
 var archaic = GM_getValue('archaic', false);
 var letterCount = GM_getValue('letterCount', 0); //letters to replace, ordered by usage frequency
-var allToUpper = !archaic;
-var allToLower = archaic;
-var transformCyrillic = true;
+var allToUpper = archaic;
+var allToLower = !archaic;
+var transformCyrillic = false;
 
 //config that you probably shouldn't change
 var LIMIT_CHILDREN = 1000; //don't descend into elements if they have more than 1000 children
 var finalTransforms = {'v':'V', 'x':'X'}; //v and x letters' modern style is unknown, use archaic instead
-var styleContent = "font-family:MadokaRunes!important;";
+var styleContent = "font-family:MadokaRunesPavlukivan!important; font-weight:normal;"; //runes are alread pretty bold, dont make them even bolder
 var tagBlacklist = ["text","code"]; //script, style and title are there by default
 var lettersChildren = {'A':1, 'O':1, 'U':1}; //count of letters that should be activated along with these. Currently only zero/one is supported.
 //config end
@@ -38,8 +38,21 @@ var lowFreq = charFreq.toLowerCase();
 var marker = "w17ch_k155"; //a random string used to mark stuff already affected by script
 
 letterCount = Math.min(charFreq.length, letterCount);
-GM_addStyle("@font-face { font-family:MadokaRunes;src:url('" + GM_getResourceURL('madokaFont') + "'); }");
-var style = GM_addStyle((letterCount == charFreq.length ? "*" : "." + marker) + " { " + styleContent + " }");
+GM_addStyle("@font-face { font-family:MadokaRunesPavlukivan;src:url('" + GM_getResourceURL('madokaFont') + "'); }");
+var style = GM_addStyle('');
+
+function updateStyle() {
+	var content = styleContent;
+	if(allToUpper) {
+		content += ' text-transform: uppercase;'
+	}
+	if(allToLower) {
+		content += ' text-transform: lowercase;'
+	}
+	style.innerText = ((letterCount == charFreq.length ? "*" : "." + marker) + " { " + content + " }");
+}
+
+updateStyle();
 
 //https://github.com/greybax/cyrillic-to-translit-js/blob/master/CyrillicToTranslit.js
 const cyr2lat = {"а": "a","б": "b","в": "v","ґ": "g","г": "g","д": "d","е": "e","ё": "yo","є": "ye","ж": "j","з": "z","и": "i","і": "i","ї": "yi","й": "y","к": "k","л": "l","м": "m","н": "n","о": "o","п": "p","р": "r","с": "s","т": "t","у": "u","ф": "f","х": "h","ц": "c","ч": "ch","ш": "sh","щ": "sh'","ъ": "'","ы": "y","ь": "'","э": "e","ю": "yu","я": "ya",};
@@ -54,24 +67,9 @@ function shouldRunify(input) {
 }
 
 function runifiedSpan(input) {
-	var text = "";
-	for(var j = 0; j < input.length; ++j) {
-		var i = lowFreq.indexOf(input[j].toLowerCase());
-		if(i < 0) {
-			text += input[j];
-		} else {
-			var c = ((!allToUpper && (input[j] === input.toLowerCase() || allToLower)) ? lowFreq[i] : charFreq[i]);
-			if(finalTransforms[c]) {
-				text += finalTransforms[c];
-			} else {
-				text += c;
-			}
-		}
-	}
-
 	var span = document.createElement('span');
 	span.classList.add(marker);
-	span.innerText = text;
+	span.innerText = input;
 	return span;
 }
 
@@ -178,41 +176,6 @@ function runifyNode(node, descend=false) {
 	}
 }
 
-function updateStyle(node) {
-	if(!node.innerText) {
-		return;
-	}
-
-	var text = "";
-	var input = node.innerText;
-	for(var j = 0; j < input.length; ++j) {
-		var k = lowFreq.indexOf(input[j]);
-		if(k < 0) {
-			k = charFreq.indexOf(input[j]);
-		}
-
-		if(k < 0) {
-			text += input[j];
-		} else {
-			var c = ((!allToUpper && (input[j] === input.toLowerCase() || allToLower)) ? lowFreq[k] : charFreq[k]);
-			if(finalTransforms[c]) {
-				text += finalTransforms[c];
-			} else {
-				text += c;
-			}
-		}
-	}
-
-	node.innerText = text;
-}
-
-function updateStyleAll() {
-	var a = document.getElementsByClassName(marker);
-	for(var i = 0; i < a.length; ++i) {
-		updateStyle(a[i]);
-	}
-}
-
 function subscriber(mutations) {
 	if(!mutations) {
 		return;
@@ -257,10 +220,8 @@ runifyNode(document, true);
 
 GM_addValueChangeListener('letterCount', function(name, old_value, new_value, remote) {
 	letterCount = new_value;
-	if(old_value == charFreq.length && new_value != charFreq.length) {
-		style.innerHTML = "." + marker + " { " + styleContent + " }";
-	} else if(old_value != charFreq.length && new_value == charFreq.length) {
-		style.innerHTML = "* { " + styleContent + " }";
+	if((old_value == charFreq.length && new_value != charFreq.length) || (old_value != charFreq.length && new_value == charFreq.length)) {
+		updateStyle();
 	}
 	if(old_value > new_value) {
 		window.location.reload(false);
@@ -271,9 +232,9 @@ GM_addValueChangeListener('letterCount', function(name, old_value, new_value, re
 
 GM_addValueChangeListener('archaic', function(name, old_value, new_value, remote) {
 	archaic = new_value;
-	allToUpper = !archaic;
-	allToLower = archaic;
-	updateStyleAll();
+	allToUpper = archaic;
+	allToLower = !archaic;
+	updateStyle();
 });
 
 GM_registerMenuCommand('Replace one more letter!', function() {
