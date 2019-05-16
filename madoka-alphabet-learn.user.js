@@ -19,7 +19,7 @@ var archaic = GM_getValue('archaic', false);
 var letterCount = GM_getValue('letterCount', 0); //letters to replace, ordered by usage frequency
 var allToUpper = archaic;
 var allToLower = !archaic;
-var transformCyrillic = false;
+var transformCyrillic = true;
 
 //config that you probably shouldn't change
 var LIMIT_CHILDREN = 1000; //don't descend into elements if they have more than 1000 children
