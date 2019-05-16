@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Madoka ftw
 // @namespace    *
-// @version      0.1.5
+// @version      0.1.5.1
 // @description  Madoka ftw
 // @author       pavlukivan
 // @match        *://*/*
@@ -23,9 +23,8 @@ var transformCyrillic = true;
 
 //config that you probably shouldn't change
 var LIMIT_CHILDREN = 1000; //don't descend into elements if they have more than 1000 children
-var finalTransforms = {'v':'V', 'x':'X'}; //v and x letters' modern style is unknown, use archaic instead
 var styleContent = "font-family:MadokaRunesPavlukivan!important; font-weight:normal;"; //runes are alread pretty bold, dont make them even bolder
-var tagBlacklist = ["text","code"]; //script, style and title are there by default
+var tagBlacklist = {"noscript":true, "script":true, "style":true, "title":true, "textarea":true, "text":true, "code":true};
 var lettersChildren = {'A':1, 'O':1, 'U':1}; //count of letters that should be activated along with these. Currently only zero/one is supported.
 //config end
 
@@ -58,10 +57,12 @@ updateStyle();
 const cyr2lat = {"а": "a","б": "b","в": "v","ґ": "g","г": "g","д": "d","е": "e","ё": "yo","є": "ye","ж": "j","з": "z","и": "i","і": "i","ї": "yi","й": "y","к": "k","л": "l","м": "m","н": "n","о": "o","п": "p","р": "r","с": "s","т": "t","у": "u","ф": "f","х": "h","ц": "c","ч": "ch","ш": "sh","щ": "sh'","ъ": "'","ы": "y","ь": "'","э": "e","ю": "yu","я": "ya",};
 const cyr2latWordStart = {"е":"ye",};
 //used for translating characters that arent available yet back to cyrillics (e.g. if y in ye isnt available, we show y as й and e as runes)
-var lat2cyr = {"a":"а","b":"б","c":"ц","d":"д","e":"е","f":"ф","g":"г","h":"х","i":"и","j":"ж","k":"к","l":"л","m":"м","n":"н","o":"о","p":"п","q":"к","r":"р","s":"с","t":"т","u":"у","v":"в","w":"в","x":"з","y":"й","z":"з",};
-finalTransforms['SS'] = 'ẞ';
+var lat2cyr = {"a":"а","b":"б","c":"ц","d":"д","e":"е","f":"ф","g":"г","h":"х","i":"и","j":"ж","k":"к","l":"л","m":"м","n":"н","o":"о","p":"п","q":"к","r":"р","s":"с","t":"т","u":"у","v":"в","w":"в","x":"з","y":"й","z":"з","'":"ь"};
 
 function shouldRunify(input) {
+	if(letterCount == charFreq.length) { //everything is being runified anyway
+		return false;
+	}
 	var i = lowFreq.indexOf(input.toLowerCase());
 	return i >= 0 && i < letterCount;
 }
@@ -101,15 +102,17 @@ function translate(input) {
 		if (!transformCyrillic || !cyr) {
 			addData(normalizedInput[i], shouldRunify(normalizedInput[i]) ? 1 : 0);
 		} else {
-			var useTranslit = false;
-			for(let k = 0; k < cyr.length; ++k) {
-				if(shouldRunify(cyr[k])) {
-					useTranslit = true;
+			var useTranslit = letterCount == charFreq.length;
+			if(!useTranslit) {
+				for(let k = 0; k < cyr.length; ++k) {
+					if(shouldRunify(cyr[k])) {
+						useTranslit = true;
+					}
 				}
 			}
 			if(useTranslit) {
 				for(let k = 0; k < cyr.length; ++k) {
-					if(shouldRunify(cyr[k])) {
+					if(letterCount == charFreq.length || shouldRunify(cyr[k])) {
 						addData(cyr[k], 1);
 					} else {
 						var c = lat2cyr[cyr[k]];
@@ -133,7 +136,7 @@ function runifyNode(node, descend=false) {
 	if(node.tagName) {
 		var tag = node.tagName.toLowerCase();
 
-		if(tag == "script" || tag == "style" || tag == "title" || tag == "textarea" || tagBlacklist.indexOf(tag) >= 0) {
+		if(tagBlacklist[tag]) {
 			return;
 		}
 	}
@@ -143,11 +146,6 @@ function runifyNode(node, descend=false) {
 		for(i = 0; i < node.children.length; ++i) {
 			runifyNode(node.children[i], descend);
 		}
-	}
-
-	if(node.getAttribute && node.getAttribute(marker) != "true") {
-		subscribe(node);
-		node.setAttribute(marker, "true");
 	}
 
 	function toNode(e) {
@@ -164,6 +162,8 @@ function runifyNode(node, descend=false) {
 			if(upd.length == 0) { //text node ends up being removed
 				node.removeChild(node.childNodes[i]);
 				--i;
+			} else if(upd.length == 1 && upd[0][0] == 0 && upd[0][1] != node.childNodes[i].nodeValue) {
+				node.childNodes[i].nodeValue = upd[0][1];
 			} else if(upd.length > 1 || (upd.length >= 1 && upd[0][0] == 1)) { //if we add or change nodes
 				var ref = toNode(upd[upd.length - 1]);
 				node.replaceChild(ref, node.childNodes[i]);
@@ -174,13 +174,23 @@ function runifyNode(node, descend=false) {
 			}
 		}
 	}
+
+	if(node.getAttribute && node.getAttribute(marker) != "true") {
+		subscribe(node);
+		node.setAttribute(marker, "true");
+	}
+
+	subscriber(observer.takeRecords(), node); //remove events, related to the edits above, from the queue
 }
 
-function subscriber(mutations) {
+function subscriber(mutations, ignoreNode=null) {
 	if(!mutations) {
 		return;
 	}
 	for(var i = 0; i < mutations.length; ++i) {
+		if(mutations[i].target == ignoreNode) {
+			continue;
+		}
 		if(mutations[i].type == 'characterData') {
 			runifyNode(mutations[i].target);
 		} else if(mutations[i].type == 'childList') {
