@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Madoka ftw
 // @namespace    *
-// @version      0.1.4
+// @version      0.1.5
 // @description  Madoka ftw
 // @author       pavlukivan
 // @match        *://*/*
