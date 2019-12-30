@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Madoka ftw
 // @namespace    *
-// @version      0.1.5.1
+// @version      0.1.6
 // @description  Madoka ftw
 // @author       pavlukivan
 // @match        *://*/*
@@ -19,12 +19,14 @@ var archaic = GM_getValue('archaic', false);
 var letterCount = GM_getValue('letterCount', 0); //letters to replace, ordered by usage frequency
 var allToUpper = archaic;
 var allToLower = !archaic;
-var transformCyrillic = true;
+var transformCyrillic = false;
 
 //config that you probably shouldn't change
 var LIMIT_CHILDREN = 1000; //don't descend into elements if they have more than 1000 children
-var styleContent = "font-family:MadokaRunesPavlukivan!important; font-weight:normal;"; //runes are alread pretty bold, dont make them even bolder
+var styleContent = "font-family:MadokaRunesPavlukivan!important; font-weight:normal!important;"; //runes are alread pretty bold, dont make them even bolder
 var tagBlacklist = {"noscript":true, "script":true, "style":true, "title":true, "textarea":true, "text":true, "code":true};
+var marker = "w17ch_k155"; //a random string used to mark stuff already affected by script
+var classBlacklist = {"CodeMirror":true, marker:true};
 var lettersChildren = {'A':1, 'O':1, 'U':1}; //count of letters that should be activated along with these. Currently only zero/one is supported.
 //config end
 
@@ -34,11 +36,27 @@ var charFreq = 'EAÄIOÖTNRSLDCUÜHMGPFYB0VW1K23549ZX687JQẞ'; //changed order 
 
 var lowFreq = charFreq.toLowerCase();
 
-var marker = "w17ch_k155"; //a random string used to mark stuff already affected by script
 
 letterCount = Math.min(charFreq.length, letterCount);
 GM_addStyle("@font-face { font-family:MadokaRunesPavlukivan;src:url('" + GM_getResourceURL('madokaFont') + "'); }");
 var style = GM_addStyle('');
+var helperStyle = GM_addStyle('');
+var elId = 0;
+
+var classesByFontFamily = {};
+
+function setElementFontFamily(node, fontFamily, additions=null) {
+    if(!additions) {
+        additions = '';
+    }
+    var className = classesByFontFamily[fontFamily];
+    if(!className) {
+        className = marker + '_' + elId++;
+        helperStyle.innerText += '.' + className + '{font-family:' + fontFamily + additions + '!important;}\n';
+        classesByFontFamily[fontFamily] = className;
+    }
+    node.classList.add(className);
+}
 
 function updateStyle() {
 	var content = styleContent;
@@ -49,6 +67,10 @@ function updateStyle() {
 		content += ' text-transform: lowercase;'
 	}
 	style.innerText = ((letterCount == charFreq.length ? "*" : "." + marker) + " { " + content + " }");
+}
+
+function disableStyle() {
+    style.innerText = '';
 }
 
 updateStyle();
@@ -128,8 +150,24 @@ function translate(input) {
 	return ret;
 }
 
-function runifyNode(node, descend=false) {
-	if((node.classList && node.classList.contains(marker)) || !node.childNodes) { //don't change stuff that IS the changes
+function runifyNode(node, descend=false, parent=true) {
+    if(parent) {
+        disableStyle();
+    }
+
+    var ignore = !node.childNodes;
+    if(!ignore && node.classList) {
+        for(var k = 0; k < node.classList.length; ++k) {
+            if(classBlacklist[node.classList[k]]) {
+                ignore = true;
+                break;
+            }
+        }
+    }
+	if(ignore) {
+        if(parent) {
+            updateStyle();
+        }
 		return;
 	}
 
@@ -137,6 +175,9 @@ function runifyNode(node, descend=false) {
 		var tag = node.tagName.toLowerCase();
 
 		if(tagBlacklist[tag]) {
+            if(parent) {
+                updateStyle();
+            }
 			return;
 		}
 	}
@@ -144,33 +185,61 @@ function runifyNode(node, descend=false) {
 	var i = 0;
 	if(descend && node.children && node.children.length < LIMIT_CHILDREN) {
 		for(i = 0; i < node.children.length; ++i) {
-			runifyNode(node.children[i], descend);
+			runifyNode(node.children[i], descend, false);
 		}
 	}
+
+    var fontFamily, additions;
+
+    try {
+        fontFamily = window.getComputedStyle(node).getPropertyValue('font-family');
+        if(fontFamily.indexOf('Font Awesome') >= 0) {
+            additions =
+                '!important;font-weight:' + window.getComputedStyle(node).getPropertyValue('font-weight') +
+                '!important;text-transform:' + window.getComputedStyle(node).getPropertyValue('text-transform');
+        }
+    } catch(e) {}
+
+    if(letterCount == charFreq.length && node.style && !fontFamily.startsWith('MadokaRunesPavlukivan')) {
+        setElementFontFamily(node, 'MadokaRunesPavlukivan,' + fontFamily, additions);
+    }
 
 	function toNode(e) {
 		if(e[0] == 0) {
 			return document.createTextNode(e[1]);
 		} else {
-			return runifiedSpan(e[1]);
+			var ret = runifiedSpan(e[1]);
+            if(fontFamily && !fontFamily.startsWith('MadokaRunesPavlukivan')) {
+                setElementFontFamily(ret, 'MadokaRunesPavlukivan,' + fontFamily, additions);
+            } else if(fontFamily) {
+                setElementFontFamily(ret, fontFamily, additions);
+            }
+            return ret;
 		}
 	}
 
 	for(i = 0; i < node.childNodes.length; ++i) {
 		if(node.childNodes[i].nodeType == 3) { //text node
 			var upd = translate(node.childNodes[i].nodeValue);
-			if(upd.length == 0) { //text node ends up being removed
+			if(upd.length == 0) { //text node ends up being removed. Probably shouldn't even happen?
 				node.removeChild(node.childNodes[i]);
 				--i;
 			} else if(upd.length == 1 && upd[0][0] == 0 && upd[0][1] != node.childNodes[i].nodeValue) {
 				node.childNodes[i].nodeValue = upd[0][1];
 			} else if(upd.length > 1 || (upd.length >= 1 && upd[0][0] == 1)) { //if we add or change nodes
+                var div = document.createElement('div');
+                div.style.display = "inline";
+                for(var j = 0; j < upd.length; ++j) {
+                    div.appendChild(toNode(upd[j]));
+                }
+                /*
 				var ref = toNode(upd[upd.length - 1]);
 				node.replaceChild(ref, node.childNodes[i]);
 				for(var j = 0; j < upd.length - 1; ++j) {
 					node.insertBefore(toNode(upd[j]), ref);
 				}
-				i += upd.length - 1; //we added a bunch of nodes, update current index to reflect that
+				i += upd.length - 1; //we added a bunch of nodes, update current index to reflect that*/
+                node.replaceChild(div, node.childNodes[i]);
 			}
 		}
 	}
@@ -181,6 +250,10 @@ function runifyNode(node, descend=false) {
 	}
 
 	subscriber(observer.takeRecords(), node); //remove events, related to the edits above, from the queue
+
+    if(parent) {
+        updateStyle();
+    }
 }
 
 function subscriber(mutations, ignoreNode=null) {
@@ -201,7 +274,9 @@ function subscriber(mutations, ignoreNode=null) {
 
 function subscribe(node) {
 	// Track innerText changes and the like
-	observer.observe(node, config1);
+    if(letterCount < charFreq.length) { //if all chars are runified, all text is already in runes
+        observer.observe(node, config1);
+    }
 	// Tracks textContent changes and new nodes
 	observer.observe(node, config2);
 }
