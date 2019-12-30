@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Madoka ftw
 // @namespace    *
-// @version      0.1.6
+// @version      0.1.6.1
 // @description  Madoka ftw
 // @author       pavlukivan
 // @match        *://*/*
@@ -16,29 +16,31 @@
 
 //config start
 var archaic = GM_getValue('archaic', false);
-var letterCount = GM_getValue('letterCount', 0); //letters to replace, ordered by usage frequency
-var allToUpper = archaic;
-var allToLower = !archaic;
+var letterCount = GM_getValue('letterCount', 0); //count of letters to replace, ordered by usage frequency
 var transformCyrillic = false;
+var transformMonospaceFonts = false;
 
 //config that you probably shouldn't change
+var FONT = 'MadokaRunesPavlukivan';
+var allToUpper = archaic;
+var allToLower = !archaic;
 var LIMIT_CHILDREN = 1000; //don't descend into elements if they have more than 1000 children
-var styleContent = "font-family:MadokaRunesPavlukivan!important; font-weight:normal!important;"; //runes are alread pretty bold, dont make them even bolder
+var styleContent = "font-family:" + FONT + "!important;font-weight:normal!important;padding:0px 0px!important;border:none!important;float:none!important;"; //runes are alread pretty bold, dont make them even bolder
 var tagBlacklist = {"noscript":true, "script":true, "style":true, "title":true, "textarea":true, "text":true, "code":true};
 var marker = "w17ch_k155"; //a random string used to mark stuff already affected by script
 var classBlacklist = {"CodeMirror":true, marker:true};
-var lettersChildren = {'A':1, 'O':1, 'U':1}; //count of letters that should be activated along with these. Currently only zero/one is supported.
+var lettersChildren = {'A':1, 'O':1, 'U':1, 'B':1}; //count of letters that should be activated along with these. Currently only zero/one is supported.
 //config end
 
 //       charset: 1234567890qwertyuiopasdfghjklzxcvbnmßüöä. English wikipedia is used for reference. Upper because 'ß'.toUpperCase() == 'SS', not 'ẞ'
 //var charFreq = 'EAIOTNRSLDCUHMGPFYB0VW1K23549ZX687JQÜÄÖẞ';
-var charFreq = 'EAÄIOÖTNRSLDCUÜHMGPFYB0VW1K23549ZX687JQẞ'; //changed order of umlauted chars
+var charFreq = 'EAÄIOÖTNRSLDCUÜHMGPFYBẞ0VW1K23549ZX687JQ'; //changed order of German letters
 
 var lowFreq = charFreq.toLowerCase();
 
 
 letterCount = Math.min(charFreq.length, letterCount);
-GM_addStyle("@font-face { font-family:MadokaRunesPavlukivan;src:url('" + GM_getResourceURL('madokaFont') + "'); }");
+GM_addStyle("@font-face { font-family:" + FONT + ";src:url('" + GM_getResourceURL('madokaFont') + "'); }");
 var style = GM_addStyle('');
 var helperStyle = GM_addStyle('');
 var elId = 0;
@@ -49,10 +51,11 @@ function setElementFontFamily(node, fontFamily, additions=null) {
     if(!additions) {
         additions = '';
     }
+    fontFamily += additions;
     var className = classesByFontFamily[fontFamily];
     if(!className) {
         className = marker + '_' + elId++;
-        helperStyle.innerText += '.' + className + '{font-family:' + fontFamily + additions + '!important;}\n';
+        helperStyle.innerText += '.' + className + '{font-family:' + fontFamily + '!important;}\n';
         classesByFontFamily[fontFamily] = className;
     }
     node.classList.add(className);
@@ -200,8 +203,17 @@ function runifyNode(node, descend=false, parent=true) {
         }
     } catch(e) {}
 
-    if(letterCount == charFreq.length && node.style && !fontFamily.startsWith('MadokaRunesPavlukivan')) {
-        setElementFontFamily(node, 'MadokaRunesPavlukivan,' + fontFamily, additions);
+    if(!transformMonospaceFonts && fontFamily.toLowerCase().indexOf('mono') >= 0) {
+        return;
+    }
+
+    var updated = fontFamily;
+    if(fontFamily && !fontFamily.startsWith(FONT)) {
+        updated = FONT + ',' + updated;
+    }
+
+    if(letterCount == charFreq.length && node.style && updated != fontFamily) {
+        setElementFontFamily(node, updated, additions);
     }
 
     function toNode(e) {
@@ -209,10 +221,8 @@ function runifyNode(node, descend=false, parent=true) {
             return document.createTextNode(e[1]);
         } else {
             var ret = runifiedSpan(e[1]);
-            if(fontFamily && !fontFamily.startsWith('MadokaRunesPavlukivan')) {
-                setElementFontFamily(ret, 'MadokaRunesPavlukivan,' + fontFamily, additions);
-            } else if(fontFamily) {
-                setElementFontFamily(ret, fontFamily, additions);
+            if(updated) {
+                setElementFontFamily(ret, updated, additions);
             }
             return ret;
         }
@@ -249,14 +259,14 @@ function runifyNode(node, descend=false, parent=true) {
         node.setAttribute(marker, "true");
     }
 
-    subscriber(observer.takeRecords(), node); //remove events, related to the edits above, from the queue
+    subscriber(observer.takeRecords(), node); //remove events related to the edits above from the queue
 
     if(parent) {
         updateStyle();
     }
 }
 
-function subscriber(mutations, ignoreNode=null) {
+function subscriber(mutations, ignoreNode=undefined) {
     if(!mutations) {
         return;
     }
@@ -330,8 +340,7 @@ GM_registerMenuCommand('Replace one more letter!', function() {
         if(lettersChildren[charFreq[letterCount]]) {
             letterCount += lettersChildren[charFreq[letterCount]];
         }
-        ++letterCount;
-        GM_setValue('letterCount', letterCount);
+        GM_setValue('letterCount', ++letterCount);
     }
 });
 
