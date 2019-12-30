@@ -59,14 +59,14 @@ function setElementFontFamily(node, fontFamily, additions=null) {
 }
 
 function updateStyle() {
-	var content = styleContent;
-	if(allToUpper) {
-		content += ' text-transform: uppercase;'
-	}
-	if(allToLower) {
-		content += ' text-transform: lowercase;'
-	}
-	style.innerText = ((letterCount == charFreq.length ? "*" : "." + marker) + " { " + content + " }");
+    var content = styleContent;
+    if(allToUpper) {
+        content += ' text-transform: uppercase;'
+    }
+    if(allToLower) {
+        content += ' text-transform: lowercase;'
+    }
+    style.innerText = ((letterCount == charFreq.length ? "*" : "." + marker) + " { " + content + " }");
 }
 
 function disableStyle() {
@@ -82,72 +82,72 @@ const cyr2latWordStart = {"е":"ye",};
 var lat2cyr = {"a":"а","b":"б","c":"ц","d":"д","e":"е","f":"ф","g":"г","h":"х","i":"и","j":"ж","k":"к","l":"л","m":"м","n":"н","o":"о","p":"п","q":"к","r":"р","s":"с","t":"т","u":"у","v":"в","w":"в","x":"з","y":"й","z":"з","'":"ь"};
 
 function shouldRunify(input) {
-	if(letterCount == charFreq.length) { //everything is being runified anyway
-		return false;
-	}
-	var i = lowFreq.indexOf(input.toLowerCase());
-	return i >= 0 && i < letterCount;
+    if(letterCount == charFreq.length) { //everything is being runified anyway
+        return false;
+    }
+    var i = lowFreq.indexOf(input.toLowerCase());
+    return i >= 0 && i < letterCount;
 }
 
 function runifiedSpan(input) {
-	var span = document.createElement('span');
-	span.classList.add(marker);
-	span.innerText = input;
-	return span;
+    var span = document.createElement('span');
+    span.classList.add(marker);
+    span.innerText = input;
+    return span;
 }
 
 function translate(input) {
-	const normalizedInput = input.normalize();
-	let newStr = "";
-	let newType = -1;
-	let wordStart = true;
+    const normalizedInput = input.normalize();
+    let newStr = "";
+    let newType = -1;
+    let wordStart = true;
 
-	let ret = [];
+    let ret = [];
 
-	function addData(data, type) {
-		if(type != newType) {
-			if(newStr) {
-				ret.push([newType, newStr]);
-			}
-			newType = type;
-			newStr = data;
-		} else {
-			newStr += data;
-		}
-		wordStart = !(newStr && newStr[newStr.length - 1].match(/[\wа-яА-Я]/i));
-	}
+    function addData(data, type) {
+        if(type != newType) {
+            if(newStr) {
+                ret.push([newType, newStr]);
+            }
+            newType = type;
+            newStr = data;
+        } else {
+            newStr += data;
+        }
+        wordStart = !(newStr && newStr[newStr.length - 1].match(/[\wа-яА-Я]/i));
+    }
 
-	for (let i = 0; i < normalizedInput.length; i++) {
-		var lower = normalizedInput[i].toLowerCase();
-		var cyr = (wordStart && cyr2latWordStart[lower]) ? cyr2latWordStart[lower] : cyr2lat[lower];
+    for (let i = 0; i < normalizedInput.length; i++) {
+        var lower = normalizedInput[i].toLowerCase();
+        var cyr = (wordStart && cyr2latWordStart[lower]) ? cyr2latWordStart[lower] : cyr2lat[lower];
 
-		if (!transformCyrillic || !cyr) {
-			addData(normalizedInput[i], shouldRunify(normalizedInput[i]) ? 1 : 0);
-		} else {
-			var useTranslit = letterCount == charFreq.length;
-			if(!useTranslit) {
-				for(let k = 0; k < cyr.length; ++k) {
-					if(shouldRunify(cyr[k])) {
-						useTranslit = true;
-					}
-				}
-			}
-			if(useTranslit) {
-				for(let k = 0; k < cyr.length; ++k) {
-					if(letterCount == charFreq.length || shouldRunify(cyr[k])) {
-						addData(cyr[k], 1);
-					} else {
-						var c = lat2cyr[cyr[k]];
-						addData((k != 0 || lower == normalizedInput[i]) ? c : c.toUpperCase(), 0);
-					}
-				}
-			} else {
-				addData(normalizedInput[i], shouldRunify(normalizedInput[i]) ? 1 : 0);
-			}
-		}
-	}
-	addData(null, -1);
-	return ret;
+        if (!transformCyrillic || !cyr) {
+            addData(normalizedInput[i], shouldRunify(normalizedInput[i]) ? 1 : 0);
+        } else {
+            var useTranslit = letterCount == charFreq.length;
+            if(!useTranslit) {
+                for(let k = 0; k < cyr.length; ++k) {
+                    if(shouldRunify(cyr[k])) {
+                        useTranslit = true;
+                    }
+                }
+            }
+            if(useTranslit) {
+                for(let k = 0; k < cyr.length; ++k) {
+                    if(letterCount == charFreq.length || shouldRunify(cyr[k])) {
+                        addData(cyr[k], 1);
+                    } else {
+                        var c = lat2cyr[cyr[k]];
+                        addData((k != 0 || lower == normalizedInput[i]) ? c : c.toUpperCase(), 0);
+                    }
+                }
+            } else {
+                addData(normalizedInput[i], shouldRunify(normalizedInput[i]) ? 1 : 0);
+            }
+        }
+    }
+    addData(null, -1);
+    return ret;
 }
 
 function runifyNode(node, descend=false, parent=true) {
@@ -164,30 +164,30 @@ function runifyNode(node, descend=false, parent=true) {
             }
         }
     }
-	if(ignore) {
+    if(ignore) {
         if(parent) {
             updateStyle();
         }
-		return;
-	}
+        return;
+    }
 
-	if(node.tagName) {
-		var tag = node.tagName.toLowerCase();
+    if(node.tagName) {
+        var tag = node.tagName.toLowerCase();
 
-		if(tagBlacklist[tag]) {
+        if(tagBlacklist[tag]) {
             if(parent) {
                 updateStyle();
             }
-			return;
-		}
-	}
+            return;
+        }
+    }
 
-	var i = 0;
-	if(descend && node.children && node.children.length < LIMIT_CHILDREN) {
-		for(i = 0; i < node.children.length; ++i) {
-			runifyNode(node.children[i], descend, false);
-		}
-	}
+    var i = 0;
+    if(descend && node.children && node.children.length < LIMIT_CHILDREN) {
+        for(i = 0; i < node.children.length; ++i) {
+            runifyNode(node.children[i], descend, false);
+        }
+    }
 
     var fontFamily, additions;
 
@@ -204,52 +204,52 @@ function runifyNode(node, descend=false, parent=true) {
         setElementFontFamily(node, 'MadokaRunesPavlukivan,' + fontFamily, additions);
     }
 
-	function toNode(e) {
-		if(e[0] == 0) {
-			return document.createTextNode(e[1]);
-		} else {
-			var ret = runifiedSpan(e[1]);
+    function toNode(e) {
+        if(e[0] == 0) {
+            return document.createTextNode(e[1]);
+        } else {
+            var ret = runifiedSpan(e[1]);
             if(fontFamily && !fontFamily.startsWith('MadokaRunesPavlukivan')) {
                 setElementFontFamily(ret, 'MadokaRunesPavlukivan,' + fontFamily, additions);
             } else if(fontFamily) {
                 setElementFontFamily(ret, fontFamily, additions);
             }
             return ret;
-		}
-	}
+        }
+    }
 
-	for(i = 0; i < node.childNodes.length; ++i) {
-		if(node.childNodes[i].nodeType == 3) { //text node
-			var upd = translate(node.childNodes[i].nodeValue);
-			if(upd.length == 0) { //text node ends up being removed. Probably shouldn't even happen?
-				node.removeChild(node.childNodes[i]);
-				--i;
-			} else if(upd.length == 1 && upd[0][0] == 0 && upd[0][1] != node.childNodes[i].nodeValue) {
-				node.childNodes[i].nodeValue = upd[0][1];
-			} else if(upd.length > 1 || (upd.length >= 1 && upd[0][0] == 1)) { //if we add or change nodes
+    for(i = 0; i < node.childNodes.length; ++i) {
+        if(node.childNodes[i].nodeType == 3) { //text node
+            var upd = translate(node.childNodes[i].nodeValue);
+            if(upd.length == 0) { //text node ends up being removed. Probably shouldn't even happen?
+                node.removeChild(node.childNodes[i]);
+                --i;
+            } else if(upd.length == 1 && upd[0][0] == 0 && upd[0][1] != node.childNodes[i].nodeValue) {
+                node.childNodes[i].nodeValue = upd[0][1];
+            } else if(upd.length > 1 || (upd.length >= 1 && upd[0][0] == 1)) { //if we add or change nodes
                 var div = document.createElement('div');
                 div.style.display = "inline";
                 for(var j = 0; j < upd.length; ++j) {
                     div.appendChild(toNode(upd[j]));
                 }
                 /*
-				var ref = toNode(upd[upd.length - 1]);
-				node.replaceChild(ref, node.childNodes[i]);
-				for(var j = 0; j < upd.length - 1; ++j) {
-					node.insertBefore(toNode(upd[j]), ref);
-				}
-				i += upd.length - 1; //we added a bunch of nodes, update current index to reflect that*/
+                var ref = toNode(upd[upd.length - 1]);
+                node.replaceChild(ref, node.childNodes[i]);
+                for(var j = 0; j < upd.length - 1; ++j) {
+                    node.insertBefore(toNode(upd[j]), ref);
+                }
+                i += upd.length - 1; //we added a bunch of nodes, update current index to reflect that*/
                 node.replaceChild(div, node.childNodes[i]);
-			}
-		}
-	}
+            }
+        }
+    }
 
-	if(node.getAttribute && node.getAttribute(marker) != "true") {
-		subscribe(node);
-		node.setAttribute(marker, "true");
-	}
+    if(node.getAttribute && node.getAttribute(marker) != "true") {
+        subscribe(node);
+        node.setAttribute(marker, "true");
+    }
 
-	subscriber(observer.takeRecords(), node); //remove events, related to the edits above, from the queue
+    subscriber(observer.takeRecords(), node); //remove events, related to the edits above, from the queue
 
     if(parent) {
         updateStyle();
@@ -257,46 +257,46 @@ function runifyNode(node, descend=false, parent=true) {
 }
 
 function subscriber(mutations, ignoreNode=null) {
-	if(!mutations) {
-		return;
-	}
-	for(var i = 0; i < mutations.length; ++i) {
-		if(mutations[i].target == ignoreNode) {
-			continue;
-		}
-		if(mutations[i].type == 'characterData') {
-			runifyNode(mutations[i].target);
-		} else if(mutations[i].type == 'childList') {
-			runifyNode(mutations[i].target, true);
-		}
-	}
+    if(!mutations) {
+        return;
+    }
+    for(var i = 0; i < mutations.length; ++i) {
+        if(mutations[i].target == ignoreNode) {
+            continue;
+        }
+        if(mutations[i].type == 'characterData') {
+            runifyNode(mutations[i].target);
+        } else if(mutations[i].type == 'childList') {
+            runifyNode(mutations[i].target, true);
+        }
+    }
 }
 
 function subscribe(node) {
-	// Track innerText changes and the like
+    // Track innerText changes and the like
     if(letterCount < charFreq.length) { //if all chars are runified, all text is already in runes
         observer.observe(node, config1);
     }
-	// Tracks textContent changes and new nodes
-	observer.observe(node, config2);
+    // Tracks textContent changes and new nodes
+    observer.observe(node, config2);
 }
 
 var config1 = {
-	attributes: false,
-	attributeOldValue: false,
-	characterData: true,
-	characterDataOldValue: false,
-	childList: false,
-	subtree: true
+    attributes: false,
+    attributeOldValue: false,
+    characterData: true,
+    characterDataOldValue: false,
+    childList: false,
+    subtree: true
 };
 
 var config2 = {
-	attributes: false,
-	attributeOldValue: false,
-	characterData: false,
-	characterDataOldValue: false,
-	childList: true,
-	subtree: false
+    attributes: false,
+    attributeOldValue: false,
+    characterData: false,
+    characterDataOldValue: false,
+    childList: true,
+    subtree: false
 };
 
 var observer = new MutationObserver(subscriber);
@@ -304,74 +304,74 @@ var observer = new MutationObserver(subscriber);
 runifyNode(document, true);
 
 GM_addValueChangeListener('letterCount', function(name, old_value, new_value, remote) {
-	letterCount = new_value;
-	if((old_value == charFreq.length && new_value != charFreq.length) || (old_value != charFreq.length && new_value == charFreq.length)) {
-		updateStyle();
-	}
-	if(old_value > new_value) {
-		window.location.reload(false);
-	} else {
-		runifyNode(document, true);
-	}
+    letterCount = new_value;
+    if((old_value == charFreq.length && new_value != charFreq.length) || (old_value != charFreq.length && new_value == charFreq.length)) {
+        updateStyle();
+    }
+    if(old_value > new_value) {
+        window.location.reload(false);
+    } else {
+        runifyNode(document, true);
+    }
 });
 
 GM_addValueChangeListener('archaic', function(name, old_value, new_value, remote) {
-	archaic = new_value;
-	allToUpper = archaic;
-	allToLower = !archaic;
-	updateStyle();
+    archaic = new_value;
+    allToUpper = archaic;
+    allToLower = !archaic;
+    updateStyle();
 });
 
 GM_registerMenuCommand('Replace one more letter!', function() {
-	if(letterCount >= charFreq.length) {
-		alert('Already replacing all the known letters!');
-	} else {
-		alert('Added letter ' + charFreq[letterCount]);
-		if(lettersChildren[charFreq[letterCount]]) {
-			letterCount += lettersChildren[charFreq[letterCount]];
-		}
-		++letterCount;
-		GM_setValue('letterCount', letterCount);
-	}
+    if(letterCount >= charFreq.length) {
+        alert('Already replacing all the known letters!');
+    } else {
+        alert('Added letter ' + charFreq[letterCount]);
+        if(lettersChildren[charFreq[letterCount]]) {
+            letterCount += lettersChildren[charFreq[letterCount]];
+        }
+        ++letterCount;
+        GM_setValue('letterCount', letterCount);
+    }
 });
 
 GM_registerMenuCommand('Make one letter turn back (and reload)!', function() {
-	if(letterCount <= 0) {
-		alert('The script is already doing nothing!');
-	} else {
-		--letterCount;
-		if(letterCount > 1) {
-			for(var k in lettersChildren) {
-				if(charFreq[letterCount - lettersChildren[k]] == k) {
-					letterCount -= lettersChildren[k];
-					break;
-				}
-			}
-		}
-		alert('Removed letter ' + charFreq[letterCount]);
-		GM_setValue('letterCount', letterCount);
-	}
+    if(letterCount <= 0) {
+        alert('The script is already doing nothing!');
+    } else {
+        --letterCount;
+        if(letterCount > 1) {
+            for(var k in lettersChildren) {
+                if(charFreq[letterCount - lettersChildren[k]] == k) {
+                    letterCount -= lettersChildren[k];
+                    break;
+                }
+            }
+        }
+        alert('Removed letter ' + charFreq[letterCount]);
+        GM_setValue('letterCount', letterCount);
+    }
 });
 
 GM_registerMenuCommand('Replace everything with runes', function() {
-	GM_setValue('oldCount', letterCount);
-	GM_setValue('letterCount', charFreq.length);
+    GM_setValue('oldCount', letterCount);
+    GM_setValue('letterCount', charFreq.length);
 });
 
 GM_registerMenuCommand('Make everything normal (and reload)', function() {
-	GM_setValue('oldCount', letterCount);
-	GM_setValue('letterCount', 0);
+    GM_setValue('oldCount', letterCount);
+    GM_setValue('letterCount', 0);
 });
 
 GM_registerMenuCommand('Undo one of the two options above', function() {
-	GM_setValue('letterCount', GM_getValue('oldCount', letterCount));
+    GM_setValue('letterCount', GM_getValue('oldCount', letterCount));
 });
 
 GM_registerMenuCommand('Switch between modern and archaic styles', function() {
-	GM_setValue('archaic', !archaic);
-	if(archaic) {
-		alert('Switching to archaic style');
-	} else {
-		alert('Switching to modern style (except letters V and X)');
-	}
+    GM_setValue('archaic', !archaic);
+    if(archaic) {
+        alert('Switching to archaic style');
+    } else {
+        alert('Switching to modern style (except letters V and X)');
+    }
 });
