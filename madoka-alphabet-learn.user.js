@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Madoka ftw
 // @namespace    *
-// @version      0.1.6.1
+// @version      0.1.6.2
 // @description  Madoka ftw
 // @author       pavlukivan
 // @match        *://*/*
@@ -28,6 +28,7 @@ var LIMIT_CHILDREN = 1000; //don't descend into elements if they have more than 
 var styleContent = "font-family:" + FONT + "!important;font-weight:normal!important;padding:0px 0px!important;border:none!important;float:none!important;"; //runes are alread pretty bold, dont make them even bolder
 var tagBlacklist = {"noscript":true, "script":true, "style":true, "title":true, "textarea":true, "text":true, "code":true};
 var marker = "w17ch_k155"; //a random string used to mark stuff already affected by script
+var markerGen = marker + "_g"; //marks generated divs/spans
 var classBlacklist = {"CodeMirror":true, marker:true};
 var lettersChildren = {'A':1, 'O':1, 'U':1, 'B':1}; //count of letters that should be activated along with these. Currently only zero/one is supported.
 //config end
@@ -64,10 +65,10 @@ function setElementFontFamily(node, fontFamily, additions=null) {
 function updateStyle() {
     var content = styleContent;
     if(allToUpper) {
-        content += ' text-transform: uppercase;'
+        content += ' text-transform: uppercase!important;'
     }
     if(allToLower) {
-        content += ' text-transform: lowercase;'
+        content += ' text-transform: lowercase!important;'
     }
     style.innerText = ((letterCount == charFreq.length ? "*" : "." + marker) + " { " + content + " }");
 }
@@ -203,7 +204,7 @@ function runifyNode(node, descend=false, parent=true) {
         }
     } catch(e) {}
 
-    if(!transformMonospaceFonts && fontFamily.toLowerCase().indexOf('mono') >= 0) {
+    if(!transformMonospaceFonts && fontFamily && fontFamily.toLowerCase().indexOf('mono') >= 0) {
         return;
     }
 
@@ -234,22 +235,30 @@ function runifyNode(node, descend=false, parent=true) {
             if(upd.length == 0) { //text node ends up being removed. Probably shouldn't even happen?
                 node.removeChild(node.childNodes[i]);
                 --i;
-            } else if(upd.length == 1 && upd[0][0] == 0 && upd[0][1] != node.childNodes[i].nodeValue) {
-                node.childNodes[i].nodeValue = upd[0][1];
+            } else if(upd.length == 1 && upd[0][0] == 0) {
+                if(upd[0][1] != node.childNodes[i].nodeValue) {
+                    node.childNodes[i].nodeValue = upd[0][1];
+                }
             } else if(upd.length > 1 || (upd.length >= 1 && upd[0][0] == 1)) { //if we add or change nodes
-                var div = document.createElement('div');
-                div.style.display = "inline";
-                for(var j = 0; j < upd.length; ++j) {
-                    div.appendChild(toNode(upd[j]));
+                if(!node.classList.contains(marker)) {
+                    var div = document.createElement('div');
+                    div.style.display = "inline";
+                    for(var j = 0; j < upd.length; ++j) {
+                        div.appendChild(toNode(upd[j]));
+                    }
+                    node.replaceChild(div, node.childNodes[i]);
+                } else {
+                    if(upd.length == 1) {
+                        node.childNodes[i].nodeValue = upd[0][1];
+                    } else {
+                        var ref = toNode(upd[upd.length - 1]);
+                        node.replaceChild(ref, node.childNodes[i]);
+                        for(var u = 0; u < upd.length - 1; ++u) {
+                            node.insertBefore(toNode(upd[u]), ref);
+                        }
+                        i += upd.length - 1; //we added a bunch of nodes, update current index to reflect that*/
+                    }
                 }
-                /*
-                var ref = toNode(upd[upd.length - 1]);
-                node.replaceChild(ref, node.childNodes[i]);
-                for(var j = 0; j < upd.length - 1; ++j) {
-                    node.insertBefore(toNode(upd[j]), ref);
-                }
-                i += upd.length - 1; //we added a bunch of nodes, update current index to reflect that*/
-                node.replaceChild(div, node.childNodes[i]);
             }
         }
     }
