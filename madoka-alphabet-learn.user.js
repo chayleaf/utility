@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Madoka ftw
 // @namespace    *
-// @version      0.1.6.2
+// @version      0.1.6.3
 // @description  Madoka ftw
 // @author       pavlukivan
 // @match        *://*/*
@@ -25,11 +25,9 @@ var FONT = 'MadokaRunesPavlukivan';
 var allToUpper = archaic;
 var allToLower = !archaic;
 var LIMIT_CHILDREN = 1000; //don't descend into elements if they have more than 1000 children
-var styleContent = "font-family:" + FONT + "!important;font-weight:normal!important;padding:0px 0px!important;border:none!important;float:none!important;"; //runes are alread pretty bold, dont make them even bolder
-var tagBlacklist = {"noscript":true, "script":true, "style":true, "title":true, "textarea":true, "text":true, "code":true};
+var styleContent = "font-family:" + FONT + "!important;font-weight:normal!important;padding:0px 0px!important;border:none!important;float:none!important;";
+var tagBlacklist = {"script":true, "style":true, "title":true, "textarea":true, "text":true, "code":true, "meta":true, "iframe":true};
 var marker = "w17ch_k155"; //a random string used to mark stuff already affected by script
-var markerGen = marker + "_g"; //marks generated divs/spans
-var classBlacklist = {"CodeMirror":true, marker:true};
 var lettersChildren = {'A':1, 'O':1, 'U':1, 'B':1}; //count of letters that should be activated along with these. Currently only zero/one is supported.
 //config end
 
@@ -159,15 +157,7 @@ function runifyNode(node, descend=false, parent=true) {
         disableStyle();
     }
 
-    var ignore = !node.childNodes;
-    if(!ignore && node.classList) {
-        for(var k = 0; k < node.classList.length; ++k) {
-            if(classBlacklist[node.classList[k]]) {
-                ignore = true;
-                break;
-            }
-        }
-    }
+    var ignore = !node.childNodes || node.isContentEditable || (node.classList && node.classList.contains(marker));
     if(ignore) {
         if(parent) {
             updateStyle();
