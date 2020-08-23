@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Youtube Kusa Counter
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.0.1
 // @description  Display kusa graph for stream vods (activate from menu)
 // @author       pavlukivan
 // @match        https://www.youtube.com/watch?v=*
@@ -96,7 +96,6 @@ GM_registerMenuCommand('Display kusa graph from chat replay', (function start() 
     progress.style = "margin-top: 25px;text-align: center;";
     progress.className = "title style-scope ytd-video-primary-info-renderer";
     player.appendChild(progress);
-    console.log('prog', progress);
 
     var canvas = document.createElement('canvas');
     var parent = document.createElement('div');
@@ -145,6 +144,7 @@ GM_registerMenuCommand('Display kusa graph from chat replay', (function start() 
                 labels: [''],
                 datasets: [
                     {
+                        lineTension: 0,
                         label: 'kusa count',
                         //borderColor: bc,
                         data: data//[{x:0,y:0},{x:0.333,y:5},{x:0.666,y:10},{x:1,y:20}]
@@ -191,7 +191,3 @@ GM_registerMenuCommand('Display kusa graph from chat replay', (function start() 
         });
     }, cb);
 }));
-
-
-
-
